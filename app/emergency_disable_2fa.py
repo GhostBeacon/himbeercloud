@@ -1,0 +1,36 @@
+"""
+NOTFALL-Skript: deaktiviert die Zwei-Faktor-Authentifizierung fuer ein Konto direkt in der
+Datenbank - fuer den Fall, dass das Authenticator-Handy verloren geht/kaputt ist und man sich
+sonst nicht mehr einloggen koennte. Erfordert Terminal-Zugriff auf den Pi (SSH), ist also
+kein Sicherheitsloch fuer Fremde - nur fuer dich als Administrator gedacht.
+
+Verwendung:
+    cd /opt/raspicloud/app
+    sudo -u raspicloud ../venv/bin/python3 emergency_disable_2fa.py
+"""
+import os
+import sqlite3
+
+DB_PATH = os.environ.get("RASPICLOUD_DB", "/var/lib/raspicloud/users.db")
+
+username = input("Benutzername, fuer den 2FA deaktiviert werden soll: ").strip()
+
+conn = sqlite3.connect(DB_PATH)
+row = conn.execute("SELECT id, totp_enabled FROM users WHERE username = ?", (username,)).fetchone()
+
+if not row:
+    print(f"FEHLER: Benutzer '{username}' wurde nicht gefunden.")
+    conn.close()
+    exit(1)
+
+if not row[1]:
+    print(f"Fuer '{username}' ist 2FA ohnehin nicht aktiviert. Nichts zu tun.")
+    conn.close()
+    exit(0)
+
+conn.execute("UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE username = ?", (username,))
+conn.commit()
+conn.close()
+
+print(f"Fertig. 2FA fuer '{username}' wurde deaktiviert. Login ist wieder nur mit Passwort moeglich.")
+print("Falls gewuenscht, kann 2FA jederzeit ueber /setup_2fa erneut eingerichtet werden.")

@@ -1,0 +1,3078 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
+<title>{{ current_user.display_name or "RaspiCloud" }}</title>
+<script>
+(function() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+})();
+</script>
+<style>
+* {
+box-sizing: border-box;
+transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+:root {
+--bg: #f8fafc;
+--text: #1e293b;
+--text-muted: #64748b;
+--text-faint: #94a3b8;
+--card-bg: #ffffff;
+--border: #e2e8f0;
+--border-strong: #cbd5e1;
+--hover-bg: #f1f5f9;
+--heading: #0f172a;
+--btn-primary-bg: #334155;
+--btn-primary-hover: #0f172a;
+--progress-bg: #e2e8f0;
+--progress-fill: #475569;
+--shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+--modal-bg: rgba(15, 23, 42, 0.85);
+}
+
+[data-theme="dark"] {
+--bg: #0f172a;
+--text: #e2e8f0;
+--text-muted: #94a3b8;
+--text-faint: #64748b;
+--card-bg: #1e293b;
+--border: #334155;
+--border-strong: #475569;
+--hover-bg: #1e293b;
+--heading: #f8fafc;
+--btn-primary-bg: #475569;
+--btn-primary-hover: #64748b;
+--progress-bg: #334155;
+--progress-fill: #94a3b8;
+--shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+--modal-bg: rgba(0, 0, 0, 0.9);
+}
+
+body {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+max-width: 1600px;
+margin: 0 auto;
+padding: 30px 20px;
+background: var(--bg);
+color: var(--text);
+font-size: 15px;
+}
+
+.page-wrap {
+position: relative;
+}
+
+/* Header Bereich */
+.header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding-bottom: 20px;
+margin-bottom: 25px;
+border-bottom: 1px solid var(--border);
+flex-wrap: wrap;
+gap: 20px;
+}
+h1 {
+font-size: 1.6em;
+font-weight: 700;
+color: var(--heading);
+margin: 0 0 6px 0;
+letter-spacing: -0.5px;
+}
+.user-info {
+font-size: 0.88em;
+color: var(--text-muted);
+}
+.user-info a {
+color: var(--text-muted);
+text-decoration: none;
+font-weight: 600;
+}
+.user-info a:hover {
+text-decoration: underline;
+}
+
+.theme-toggle-wrap {
+position: relative;
+display: inline-flex;
+}
+.theme-toggle {
+background: var(--card-bg);
+border: 1px solid var(--border-strong);
+border-radius: 8px;
+width: 38px;
+height: 38px;
+font-size: 1.1em;
+cursor: pointer;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+color: var(--text);
+}
+.theme-toggle:hover {
+background: var(--hover-bg);
+}
+
+/* Karten / Container */
+.card {
+background: var(--card-bg);
+padding: 18px 20px;
+border-radius: 12px;
+box-shadow: var(--shadow);
+border: 1px solid var(--border);
+margin-bottom: 20px;
+}
+.content-card {
+display: flex;
+flex-direction: column;
+}
+#contentList {
+overflow-y: auto;
+padding-right: 4px;
+}
+.card h2, .card h3 {
+margin-top: 0;
+margin-bottom: 16px;
+font-weight: 600;
+color: var(--heading);
+font-size: 1.1em;
+}
+
+/* Speicherplatz-Anzeige */
+.storage-box {
+background: var(--card-bg);
+padding: 12px 18px;
+border-radius: 8px;
+border: 1px solid var(--border);
+min-width: 260px;
+font-size: 0.85em;
+color: var(--text);
+}
+.storage-box.wide {
+display: flex;
+align-items: flex-start;
+gap: 24px;
+min-width: 480px;
+}
+.storage-summary {
+flex: 1;
+min-width: 220px;
+}
+.storage-breakdown {
+flex: 1;
+min-width: 190px;
+border-left: 1px solid var(--border);
+padding-left: 20px;
+display: flex;
+flex-direction: column;
+gap: 4px;
+align-self: stretch;
+justify-content: center;
+}
+.storage-breakdown-row {
+display: flex;
+justify-content: space-between;
+gap: 12px;
+font-size: 0.92em;
+color: var(--text-muted);
+}
+.storage-breakdown-row span:last-child {
+font-weight: 600;
+color: var(--text);
+white-space: nowrap;
+}
+.storage-breakdown-note {
+font-size: 0.78em;
+color: var(--text-faint);
+font-style: italic;
+margin-top: 6px;
+}
+.progress-bar-bg {
+background: var(--progress-bg);
+height: 8px;
+border-radius: 4px;
+overflow: hidden;
+margin-top: 8px;
+}
+.progress-bar-fill {
+height: 100%;
+background: var(--progress-fill);
+border-radius: 4px;
+transition: width 0.4s ease, background-color 0.3s ease;
+}
+
+/* Brotkrumen-Pfad (liegt VOR dem zweispaltigen Layout, volle Breite) */
+.breadcrumb {
+font-size: 0.9em;
+margin-bottom: 20px;
+color: var(--text-muted);
+display: flex;
+align-items: center;
+gap: 8px;
+flex-wrap: wrap;
+}
+.breadcrumb a {
+color: var(--heading);
+text-decoration: none;
+font-weight: 600;
+}
+.breadcrumb a:hover {
+text-decoration: underline;
+}
+
+/* --- ZWEISPALTIGES LAYOUT: Hauptinhalt + Sidebar --- */
+.layout-grid {
+display: flex;
+gap: 24px;
+align-items: flex-start;
+}
+.main-content {
+flex: 1;
+min-width: 0;
+}
+.sidebar {
+width: 240px;
+flex-shrink: 0;
+position: sticky;
+top: 20px;
+padding-top: 42px;
+}
+@media (max-width: 800px) {
+.layout-grid { flex-direction: column; }
+.content-card { flex: none; }
+#contentList { flex: none; overflow-y: visible; max-height: none !important; }
+.sidebar { width: 100%; position: static; padding-top: 0; }
+}
+
+.sidebar-card h3 {
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.backup-item {
+margin-bottom: 16px;
+padding-bottom: 16px;
+border-bottom: 1px solid var(--border);
+}
+.backup-item:last-child {
+margin-bottom: 0;
+padding-bottom: 0;
+border-bottom: none;
+}
+.backup-item-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 6px;
+}
+.backup-item-name {
+font-size: 0.85em;
+font-weight: 600;
+color: var(--text-muted);
+}
+.backup-item-badge {
+font-size: 0.75em;
+font-weight: 700;
+padding: 2px 8px;
+border-radius: 999px;
+background: var(--hover-bg);
+color: var(--text-faint);
+}
+.backup-item-badge.backup-ok {
+background: rgba(16, 185, 129, 0.15);
+color: #10b981;
+}
+.backup-item-badge.backup-warning {
+background: rgba(239, 68, 68, 0.15);
+color: #ef4444;
+}
+.backup-item-badge.backup-stale {
+background: rgba(245, 158, 11, 0.15);
+color: #f59e0b;
+}
+.backup-item-detail {
+font-size: 0.82em;
+color: var(--text-faint);
+}
+.stat-row {
+margin-bottom: 18px;
+}
+.stat-row:last-child {
+margin-bottom: 0;
+}
+.stat-label-line {
+display: flex;
+justify-content: space-between;
+align-items: baseline;
+margin-bottom: 6px;
+}
+.stat-label {
+font-size: 0.82em;
+color: var(--text-muted);
+font-weight: 600;
+}
+.stat-value {
+font-size: 0.82em;
+color: var(--text);
+font-weight: 700;
+}
+.stat-value-big {
+font-size: 1.5em;
+font-weight: 700;
+color: var(--heading);
+line-height: 1.2;
+}
+.stat-sub {
+font-size: 0.78em;
+color: var(--text-faint);
+margin-top: 2px;
+}
+.stat-warning { color: #ef4444 !important; }
+.progress-bar-fill.warning { background: #ef4444; }
+
+.io-grid {
+display: flex;
+gap: 16px;
+margin-top: 4px;
+}
+.io-item {
+flex: 1;
+}
+.io-arrow {
+color: var(--text-muted);
+font-weight: 400;
+margin-right: 3px;
+}
+.io-value {
+font-size: 0.95em;
+font-weight: 700;
+color: var(--heading);
+}
+.sidebar-divider {
+border: none;
+border-top: 1px solid var(--border);
+margin: 18px 0;
+}
+.cpu-cores {
+display: flex;
+gap: 3px;
+align-items: flex-end;
+height: 22px;
+margin-top: 6px;
+}
+.cpu-core-bar {
+flex: 1;
+background: var(--progress-bg);
+border-radius: 2px;
+position: relative;
+height: 100%;
+overflow: hidden;
+}
+.cpu-core-bar-fill {
+position: absolute;
+bottom: 0;
+left: 0;
+right: 0;
+background: var(--progress-fill);
+transition: height 0.3s ease;
+}
+
+/* Aktionsbereich Grid */
+.actions-bar {
+display: flex;
+gap: 20px;
+flex-wrap: wrap;
+flex-shrink: 0;
+align-items: flex-start;
+}
+.actions-card {
+flex: 1;
+min-width: 260px;
+}
+
+/* Drop-Zone für Dateien & Ordner */
+.dropzone {
+display: block;
+width: 100%;
+border: 2px dashed var(--border-strong);
+border-radius: 10px;
+padding: 16px 14px;
+text-align: center;
+cursor: pointer;
+color: var(--text-muted);
+font-size: 0.86em;
+background: var(--hover-bg);
+line-height: 1.5;
+box-sizing: border-box;
+}
+.dropzone.dragover {
+border-color: var(--btn-primary-bg);
+background: var(--bg);
+color: var(--text);
+}
+.dropzone-buttons {
+display: flex;
+gap: 8px;
+margin-top: 12px;
+flex-wrap: wrap;
+}
+.dropzone-buttons button,
+.dropzone-buttons label {
+flex: 1;
+min-width: 0;
+text-align: center;
+}
+.extract-zip-label {
+display: flex;
+align-items: center;
+gap: 8px;
+margin-top: 12px;
+font-size: 0.85em;
+color: var(--text-muted);
+cursor: pointer;
+}
+.extract-zip-label input {
+width: 16px;
+height: 16px;
+cursor: pointer;
+accent-color: var(--btn-primary-bg);
+}
+
+/* Schwebendes, verschiebbares Upload-Panel - unten rechts, überlebt Ordnernavigation */
+.upload-float-panel {
+position: fixed;
+bottom: 20px;
+right: 20px;
+width: 320px;
+max-width: calc(100vw - 32px);
+max-height: 70vh;
+overflow-y: auto;
+background: var(--card-bg);
+border: 1px solid var(--border);
+border-radius: 12px;
+box-shadow: 0 10px 25px -5px rgba(0,0,0,0.25), 0 8px 10px -6px rgba(0,0,0,0.15);
+padding: 16px;
+z-index: 900;
+display: none;
+}
+.upload-float-panel.visible {
+display: block;
+}
+.upload-float-header {
+display: flex;
+align-items: center;
+justify-content: space-between;
+cursor: move;
+user-select: none;
+font-weight: 700;
+font-size: 0.9em;
+color: var(--heading);
+padding-bottom: 10px;
+margin-bottom: 12px;
+border-bottom: 1px solid var(--border);
+}
+.upload-overall {
+margin-bottom: 12px;
+}
+.upload-file-folder-tag {
+display: block;
+font-size: 0.85em;
+color: var(--text-faint);
+margin-top: 1px;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+}
+.upload-file-list {
+max-height: 190px;
+overflow-y: auto;
+display: flex;
+flex-direction: column;
+gap: 9px;
+padding-right: 2px;
+margin-bottom: 12px;
+}
+.upload-error-summary {
+margin-bottom: 12px;
+padding: 10px 12px;
+border-radius: 8px;
+background: rgba(239, 68, 68, 0.08);
+border: 1px solid #ef4444;
+font-size: 0.78em;
+color: var(--text);
+line-height: 1.5;
+}
+.upload-error-summary strong {
+color: #ef4444;
+}
+.upload-error-summary ul {
+margin: 6px 0 0 0;
+padding-left: 18px;
+list-style: disc;
+}
+.upload-error-summary li {
+margin-bottom: 4px;
+word-break: break-word;
+}
+.upload-error-summary .error-reason {
+color: var(--text-muted);
+}
+.upload-file-row {
+font-size: 0.78em;
+}
+.upload-file-name-line {
+display: flex;
+justify-content: space-between;
+gap: 8px;
+margin-bottom: 3px;
+color: var(--text-muted);
+}
+.upload-file-name-text {
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+min-width: 0;
+}
+.upload-file-pct {
+flex-shrink: 0;
+font-weight: 600;
+}
+.upload-file-bar-bg {
+height: 5px;
+background: var(--progress-bg);
+border-radius: 3px;
+overflow: hidden;
+}
+.upload-file-bar-fill {
+height: 100%;
+width: 0%;
+background: var(--progress-fill);
+border-radius: 3px;
+transition: width 0.15s ease;
+}
+.upload-file-row.done .upload-file-bar-fill {
+background: #10b981;
+}
+.upload-file-row.error .upload-file-bar-fill {
+background: #ef4444;
+}
+.upload-file-row.cancelled .upload-file-bar-fill {
+background: var(--text-faint);
+}
+.upload-remove-btn {
+background: none;
+border: none;
+color: var(--text-faint);
+cursor: pointer;
+font-size: 1.05em;
+line-height: 1;
+padding: 0 2px;
+flex-shrink: 0;
+}
+.upload-remove-btn:hover {
+color: #ef4444;
+}
+.upload-cancel-btn {
+background: none;
+border: 1px solid var(--border-strong);
+border-radius: 6px;
+color: var(--text-muted);
+cursor: pointer;
+font-size: 0.78em;
+padding: 2px 8px;
+white-space: nowrap;
+}
+.upload-cancel-btn:hover {
+background: rgba(239, 68, 68, 0.08);
+color: #ef4444;
+border-color: #ef4444;
+}
+.upload-error-summary .retry-btn {
+margin-top: 10px;
+width: 100%;
+}
+.upload-file-row.queued .upload-file-name-line,
+.upload-file-row.queued .upload-file-bar-bg {
+opacity: 0.45;
+}
+.upload-action-buttons {
+display: flex;
+gap: 8px;
+}
+.upload-action-buttons button {
+flex: 1;
+}
+
+/* Listen-Design: einzeiliges Layout je Eintrag - Name links, Aktionen rechts */
+ul { list-style: none; padding: 0; margin: 0; }
+li {
+display: flex;
+flex-direction: row;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+padding: 8px 8px;
+border-bottom: 1px solid var(--border);
+border-radius: 6px;
+flex-wrap: wrap;
+}
+li:hover {
+background-color: var(--hover-bg);
+}
+li:last-child { border-bottom: none; }
+
+/* Linker Bereich: Thumbnail + Name */
+.file-info {
+display: flex;
+align-items: center;
+gap: 12px;
+min-width: 0;
+flex: 1;
+}
+.item-name {
+font-size: 0.92em;
+text-decoration: none;
+color: var(--heading);
+font-weight: 600;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+}
+.item-name:hover {
+color: var(--text-muted);
+}
+.file-size {
+font-size: 0.82em;
+color: var(--text-muted);
+margin-left: 6px;
+white-space: nowrap;
+}
+.thumb-img {
+width: 42px;
+height: 42px;
+flex-shrink: 0;
+object-fit: cover;
+border-radius: 6px;
+cursor: pointer;
+border: 1px solid var(--border-strong);
+}
+.thumb-img:hover {
+transform: scale(1.04);
+border-color: var(--text-muted);
+}
+.file-icon {
+width: 42px;
+flex-shrink: 0;
+text-align: center;
+font-size: 1.3em;
+opacity: 0.85;
+}
+
+.item-checkbox {
+flex-shrink: 0;
+width: 17px;
+height: 17px;
+cursor: pointer;
+accent-color: var(--btn-primary-bg);
+}
+
+.rename-btn {
+flex-shrink: 0;
+background: none;
+border: none;
+padding: 2px 4px;
+font-size: 0.85em;
+cursor: pointer;
+opacity: 0.5;
+}
+.rename-btn:hover {
+opacity: 1;
+}
+.rename-input {
+flex: 1;
+min-width: 0;
+padding: 4px 8px;
+border-radius: 6px;
+border: 1px solid var(--btn-primary-bg);
+background: var(--card-bg);
+color: var(--heading);
+font-size: 0.92em;
+font-weight: 600;
+outline: none;
+}
+
+.list-toolbar {
+display: flex;
+align-items: center;
+justify-content: space-between;
+flex-wrap: wrap;
+gap: 12px;
+margin-bottom: 16px;
+padding-bottom: 16px;
+border-bottom: 1px solid var(--border);
+flex-shrink: 0;
+}
+.select-all-label {
+display: flex;
+align-items: center;
+gap: 8px;
+font-size: 0.85em;
+color: var(--text-muted);
+font-weight: 600;
+cursor: pointer;
+}
+.select-all-label input {
+width: 17px;
+height: 17px;
+cursor: pointer;
+accent-color: var(--btn-primary-bg);
+}
+.sort-select {
+padding: 6px 10px;
+border-radius: 8px;
+border: 1px solid var(--border-strong);
+background: var(--card-bg);
+color: var(--text);
+font-size: 0.83em;
+cursor: pointer;
+}
+.pagination-bar {
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 16px;
+margin-top: 18px;
+padding-top: 16px;
+border-top: 1px solid var(--border);
+flex-shrink: 0;
+}
+.pagination-info {
+font-size: 0.85em;
+color: var(--text-muted);
+white-space: nowrap;
+}
+.pagination-bar button:disabled {
+opacity: 0.4;
+cursor: not-allowed;
+}
+.bulk-actions-bar {
+display: flex;
+align-items: center;
+gap: 10px;
+flex-wrap: wrap;
+}
+.bulk-selected-count {
+font-size: 0.82em;
+color: var(--text-muted);
+font-weight: 600;
+white-space: nowrap;
+}
+
+/* Rechter Bereich: Aktions-Buttons */
+.btn-group {
+display: flex;
+gap: 8px;
+align-items: center;
+flex-wrap: wrap;
+flex-shrink: 0;
+justify-content: flex-end;
+}
+
+/* Ansicht-Umschalter (Liste/Galerie) */
+.view-toggle {
+display: flex;
+gap: 4px;
+background: var(--hover-bg);
+border-radius: 8px;
+padding: 3px;
+}
+.view-toggle-btn {
+background: none;
+border: none;
+border-radius: 6px;
+padding: 5px 10px;
+font-size: 0.95em;
+cursor: pointer;
+color: var(--text-muted);
+}
+.view-toggle-btn:hover {
+color: var(--heading);
+}
+.view-toggle-btn.active {
+background: var(--card-bg);
+color: var(--heading);
+box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+/* Galerie-Ansicht: dieselben <li>-Elemente wie die Liste, nur als Kachel-Raster dargestellt */
+.content-list.gallery-view {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+gap: 16px;
+}
+.content-list.gallery-view li {
+flex-direction: column;
+align-items: center;
+text-align: center;
+gap: 8px;
+padding: 14px 10px;
+border: 1px solid var(--border);
+border-bottom: 1px solid var(--border);
+border-radius: 12px;
+}
+.content-list.gallery-view li:hover {
+border-color: var(--border-strong);
+}
+.content-list.gallery-view .file-info {
+flex-direction: column;
+gap: 8px;
+width: 100%;
+}
+.content-list.gallery-view .thumb-img,
+.content-list.gallery-view .file-icon {
+width: 100px;
+height: 100px;
+font-size: 2.8em;
+}
+.content-list.gallery-view .item-checkbox {
+align-self: flex-start;
+}
+.content-list.gallery-view .item-name,
+.content-list.gallery-view .rename-input {
+white-space: normal;
+word-break: break-word;
+text-align: center;
+}
+.content-list.gallery-view .btn-group {
+margin-left: 0;
+justify-content: center;
+}
+
+/* Bild-Lightbox: Pfeil-Buttons zum Blättern durch alle Bilder im aktuellen Ordner */
+.gallery-nav-btn {
+position: fixed;
+top: 50%;
+transform: translateY(-50%);
+background: rgba(255,255,255,0.15);
+border: none;
+color: #ffffff;
+font-size: 2.2em;
+width: 52px;
+height: 52px;
+border-radius: 50%;
+cursor: pointer;
+display: none;
+align-items: center;
+justify-content: center;
+z-index: 1001;
+line-height: 1;
+}
+.gallery-nav-btn:hover {
+background: rgba(255,255,255,0.3);
+}
+.gallery-nav-btn:disabled {
+opacity: 0.3;
+cursor: not-allowed;
+}
+.gallery-nav-prev { left: 20px; }
+.gallery-nav-next { right: 20px; }
+
+button, a.btn, label.upload-label-btn {
+padding: 7px 13px;
+border-radius: 6px;
+border: 1px solid var(--border-strong);
+font-size: 0.82em;
+font-weight: 500;
+cursor: pointer;
+text-decoration: none;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+gap: 5px;
+background: var(--card-bg);
+color: var(--text);
+white-space: nowrap;
+}
+button:hover, a.btn:hover, label.upload-label-btn:hover {
+background: var(--hover-bg);
+color: var(--heading);
+border-color: var(--text-muted);
+}
+
+button:disabled {
+opacity: 0.5;
+cursor: not-allowed;
+}
+label.upload-label-btn.label-disabled {
+opacity: 0.5;
+pointer-events: none;
+cursor: not-allowed;
+}
+
+/* Visuell verstecktes, aber weiterhin per Label/Tastatur erreichbares Datei-Feld
+   (display:none funktioniert auf manchen Mobile-Browsern, v.a. iOS Safari, nicht zuverlässig) */
+.visually-hidden-file-input {
+position: absolute;
+width: 1px;
+height: 1px;
+padding: 0;
+margin: -1px;
+overflow: hidden;
+clip: rect(0, 0, 0, 0);
+white-space: nowrap;
+border: 0;
+}
+
+.btn-primary {
+background: var(--btn-primary-bg);
+color: #ffffff;
+border: none;
+}
+.btn-primary:hover {
+background: var(--btn-primary-hover);
+color: #ffffff;
+}
+
+.btn-preview {
+background: var(--card-bg);
+color: var(--text);
+}
+.btn-download {
+background: var(--hover-bg);
+color: var(--text);
+border-color: var(--border);
+}
+.btn-danger {
+background: var(--card-bg);
+color: var(--text-muted);
+border-color: var(--border);
+}
+.btn-danger:hover {
+background: var(--hover-bg);
+color: var(--heading);
+border-color: var(--border-strong);
+}
+
+/* Papierkorb-Ansicht */
+.empty-trash-bar {
+display: flex;
+justify-content: flex-end;
+margin-bottom: 18px;
+}
+.btn-danger-outline {
+padding: 8px 16px;
+border-radius: 8px;
+border: 1px solid #ef4444;
+background: var(--card-bg);
+color: #ef4444;
+font-size: 0.85em;
+font-weight: 600;
+cursor: pointer;
+}
+.btn-danger-outline:hover {
+background: rgba(239, 68, 68, 0.08);
+}
+.item-info {
+display: flex;
+align-items: center;
+gap: 12px;
+}
+.days-left {
+font-size: 0.82em;
+color: var(--text-faint);
+}
+.days-left.warning {
+color: #ef4444;
+font-weight: 600;
+}
+.btn-restore {
+background: #10b981;
+color: white;
+border: none;
+}
+.btn-restore:hover {
+background: #059669;
+color: white;
+}
+.empty {
+color: var(--text-faint);
+font-style: italic;
+padding: 20px 0;
+}
+
+/* Strikter Bestätigungsdialog für "Papierkorb leeren" */
+.modal-overlay {
+display: none;
+position: fixed;
+inset: 0;
+background: var(--modal-bg);
+backdrop-filter: blur(3px);
+z-index: 1000;
+align-items: center;
+justify-content: center;
+padding: 20px;
+}
+.modal-overlay.visible { display: flex; }
+.confirm-dialog {
+background: var(--card-bg);
+border: 1px solid var(--border);
+border-radius: 14px;
+max-width: 420px;
+width: 100%;
+padding: 26px;
+box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+}
+.move-dialog h3 {
+color: var(--heading);
+}
+.move-target-list {
+max-height: 340px;
+overflow-y: auto;
+border: 1px solid var(--border);
+border-radius: 8px;
+margin-bottom: 16px;
+}
+.move-target-row {
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 9px 12px;
+font-size: 0.9em;
+color: var(--text);
+border-bottom: 1px solid var(--border);
+}
+.move-target-row:last-child {
+border-bottom: none;
+}
+.move-target-row.move-target-root {
+font-weight: 600;
+cursor: pointer;
+}
+.move-target-row.move-target-root:hover {
+background: var(--hover-bg);
+}
+.move-target-toggle {
+flex-shrink: 0;
+width: 22px;
+height: 22px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 1px solid var(--border-strong);
+border-radius: 5px;
+font-weight: 700;
+font-size: 0.85em;
+cursor: pointer;
+color: var(--text-muted);
+user-select: none;
+}
+.move-target-toggle:hover {
+background: var(--hover-bg);
+}
+.move-target-toggle-empty {
+flex-shrink: 0;
+width: 22px;
+height: 22px;
+}
+.move-target-label {
+flex: 1;
+min-width: 0;
+cursor: pointer;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+padding: 4px 0;
+}
+.move-target-label:hover {
+color: var(--btn-primary-bg);
+}
+.move-target-loading {
+padding: 20px;
+text-align: center;
+color: var(--text-faint);
+font-size: 0.88em;
+}
+.confirm-dialog h3 {
+margin: 0 0 12px 0;
+color: #ef4444;
+font-size: 1.1em;
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.confirm-dialog p {
+font-size: 0.9em;
+color: var(--text-muted);
+line-height: 1.5;
+margin: 0 0 12px 0;
+}
+.confirm-dialog p strong {
+color: var(--heading);
+}
+.confirm-dialog-word {
+font-family: monospace;
+font-weight: 700;
+color: #ef4444;
+letter-spacing: 0.5px;
+}
+.confirm-dialog input[type="text"] {
+width: 100%;
+padding: 10px 12px;
+border-radius: 8px;
+border: 1px solid var(--border-strong);
+background: var(--bg);
+color: var(--heading);
+font-size: 0.95em;
+margin-bottom: 18px;
+outline: none;
+}
+.confirm-dialog input[type="text"]:focus {
+border-color: #ef4444;
+box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+.confirm-dialog-buttons {
+display: flex;
+gap: 10px;
+}
+.confirm-dialog-buttons button {
+flex: 1;
+padding: 10px;
+font-size: 0.88em;
+}
+.btn-danger-solid {
+background: #ef4444;
+color: #ffffff;
+border: none;
+font-weight: 600;
+}
+.btn-danger-solid:hover:not(:disabled) {
+background: #dc2626;
+}
+.btn-danger-solid:disabled {
+background: var(--border-strong);
+color: var(--text-faint);
+cursor: not-allowed;
+}
+
+input[type="text"], select {
+padding: 8px 12px;
+border-radius: 6px;
+border: 1px solid var(--border-strong);
+font-size: 0.88em;
+outline: none;
+background: var(--card-bg);
+color: var(--text);
+}
+input[type="text"]:focus, select:focus {
+border-color: var(--text-muted);
+box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.2);
+}
+
+a.logout {
+color: var(--text-muted);
+text-decoration: none;
+font-weight: 600;
+margin-left: 8px;
+}
+a.logout:hover { color: var(--heading); text-decoration: underline; }
+
+/* Modal für Medien-Vorschau (Lightbox) */
+.modal {
+display: none;
+position: fixed;
+z-index: 1000;
+left: 0; top: 0;
+width: 100%; height: 100%;
+background-color: var(--modal-bg);
+backdrop-filter: blur(4px);
+justify-content: center;
+align-items: center;
+flex-direction: column;
+}
+.modal-content {
+max-width: 90vw;
+max-height: 82vh;
+width: auto;
+height: auto;
+min-width: min(70vw, 900px);
+object-fit: contain;
+border-radius: 8px;
+box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+}
+.close-btn {
+position: absolute;
+top: 20px;
+right: 30px;
+color: #f8fafc;
+font-size: 36px;
+font-weight: 300;
+cursor: pointer;
+}
+.close-btn:hover { color: #94a3b8; }
+
+/* --- Suche --- */
+.search-box { flex: 1 1 220px; max-width: 360px; }
+.search-input {
+width: 100%;
+padding: 7px 12px;
+border-radius: 8px;
+border: 1px solid var(--border-strong);
+background: var(--card-bg);
+color: var(--text);
+font-size: 0.85em;
+}
+.search-input:focus { outline: 2px solid var(--btn-primary-bg); outline-offset: 1px; }
+.search-banner {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+flex-wrap: wrap;
+margin-bottom: 12px;
+padding: 10px 14px;
+border-radius: 8px;
+background: var(--hover-bg);
+border: 1px solid var(--border);
+font-size: 0.85em;
+color: var(--text-muted);
+}
+.search-location {
+font-size: 0.78em;
+color: var(--text-muted);
+text-decoration: none;
+margin-left: 6px;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+max-width: 240px;
+}
+.search-location:hover { text-decoration: underline; color: var(--text); }
+.content-list.gallery-view .search-location { display: block; margin: 2px 0 0; max-width: 100%; }
+
+/* --- Meldungen (ersetzen alert()) --- */
+.toast-stack {
+position: fixed;
+right: 20px;
+bottom: 20px;
+z-index: 3000;
+display: flex;
+flex-direction: column;
+gap: 10px;
+max-width: min(420px, calc(100vw - 40px));
+pointer-events: none;
+}
+.toast {
+display: flex;
+align-items: flex-start;
+gap: 10px;
+padding: 12px 14px;
+border-radius: 10px;
+background: var(--card-bg);
+color: var(--text);
+border: 1px solid var(--border);
+border-left: 4px solid var(--text-muted);
+box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+font-size: 0.88em;
+line-height: 1.4;
+pointer-events: auto;
+animation: toast-in 0.18s ease-out;
+}
+.toast.toast-error { border-left-color: #dc2626; }
+.toast.toast-success { border-left-color: #16a34a; }
+.toast .toast-icon { flex-shrink: 0; font-weight: 700; }
+.toast.toast-error .toast-icon { color: #dc2626; }
+.toast.toast-success .toast-icon { color: #16a34a; }
+.toast .toast-text { flex: 1; }
+.toast .toast-close {
+background: none; border: none; padding: 0 2px; margin: 0;
+color: var(--text-faint); font-size: 1.2em; line-height: 1; cursor: pointer;
+}
+.toast.toast-hide { opacity: 0; transform: translateY(6px); transition: opacity 0.2s, transform 0.2s; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } .toast.toast-hide { transition: none; } }
+
+/* --- Bilddetails (EXIF) im Bildbetrachter --- */
+.exif-toggle-btn {
+position: absolute;
+top: 22px;
+left: 30px;
+z-index: 2;
+padding: 6px 14px;
+border-radius: 8px;
+border: 1px solid rgba(248, 250, 252, 0.4);
+background: rgba(15, 23, 42, 0.55);
+color: #f8fafc;
+font-size: 0.85em;
+cursor: pointer;
+}
+.exif-toggle-btn:hover, .exif-toggle-btn.active { background: rgba(248, 250, 252, 0.18); }
+.exif-panel {
+position: absolute;
+top: 70px;
+left: 30px;
+z-index: 2;
+width: min(340px, calc(100vw - 60px));
+max-height: calc(100vh - 110px);
+overflow-y: auto;
+padding: 16px 18px;
+border-radius: 10px;
+background: var(--card-bg);
+color: var(--text);
+box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.35);
+font-size: 0.86em;
+}
+.exif-panel h4 { margin: 0 0 10px; font-size: 1em; color: var(--heading); word-break: break-all; }
+.exif-panel dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; }
+.exif-panel dt { color: var(--text-muted); }
+.exif-panel dd { margin: 0; word-break: break-word; }
+.exif-panel .exif-hint { color: var(--text-muted); font-style: italic; margin: 0; }
+.exif-panel a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<div class="header">
+<div>
+<h1>{{ current_user.display_name or "RaspiCloud" }}</h1>
+<div class="user-info">Eingeloggt als <strong>{{ username }}</strong> | <a href="/setup_2fa" class="nav-link">&#x1F510; 2FA</a> | <a href="/trash" class="nav-link">&#x1F5D1;&#xFE0F; Papierkorb</a> | <a href="/logout" class="logout">Abmelden</a></div>
+</div>
+
+<div style="display:flex; align-items:center; gap:14px;">
+<!-- Speicherplatz-Anzeige -->
+<div class="storage-box{% if disk.mode == 'overview' %} wide{% endif %}">
+{% if disk.mode == 'overview' %}
+<div class="storage-summary">
+<div><strong>Speicherplatz gesamt:</strong><br>{{ disk.used_gb }} GB von {{ disk.total_gb }} GB belegt</div>
+<div class="progress-bar-bg">
+<div class="progress-bar-fill" style="width: {{ disk.percent_used }}%;"></div>
+</div>
+<div style="color: var(--text-muted); font-size: 0.88em; margin-top: 5px;">{{ disk.free_gb }} GB frei ({{ disk.percent_used }}% genutzt)</div>
+</div>
+<div class="storage-breakdown">
+{% for item in disk.breakdown %}
+<div class="storage-breakdown-row">
+<span>{{ item.label }}</span>
+<span>{{ item.gb }} GB</span>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div><strong>Speicherplatz:</strong> {{ disk.used_gb }} GB von {{ disk.total_gb }} GB belegt</div>
+<div class="progress-bar-bg">
+<div class="progress-bar-fill" style="width: {{ disk.percent_used }}%;"></div>
+</div>
+<div style="color: var(--text-muted); font-size: 0.88em; margin-top: 5px;">{{ disk.free_gb }} GB frei ({{ disk.percent_used }}% genutzt)</div>
+{% endif %}
+</div>
+
+<!-- Dark-Mode-Button -->
+<div class="theme-toggle-wrap">
+<button class="theme-toggle" onclick="toggleTheme()" title="Hell-/Dunkelmodus umschalten" id="themeToggleBtn">&#x1F319;</button>
+</div>
+</div>
+</div>
+
+<!-- Zweispaltiges Layout: Hauptinhalt links, Pi-Status-Sidebar rechts.
+     pageContent wird bei Ordnernavigation per AJAX ausgetauscht (siehe navigateTo() im Skript),
+     der Rest der Seite (inkl. laufendem Upload im schwebenden Panel) bleibt dabei komplett erhalten. -->
+<div class="layout-grid">
+<div id="pageContent" class="main-content" data-view="{{ view_mode }}">
+{% if view_mode == 'trash' %}
+{% include '_trash_content.html' %}
+{% else %}
+{% include '_content.html' %}
+{% endif %}
+</div>
+
+{% if current_user.show_system_stats %}
+<aside class="sidebar">
+<div class="card sidebar-card">
+<h3>&#x1F5A5;&#xFE0F; Pi-Status</h3>
+
+<div class="stat-row">
+<div class="stat-label-line">
+<span class="stat-label">CPU-Auslastung</span>
+<span class="stat-value" id="cpuValue">&ndash;</span>
+</div>
+<div class="progress-bar-bg"><div class="progress-bar-fill" id="cpuBar" style="width:0%"></div></div>
+<div class="cpu-cores" id="cpuCores"></div>
+</div>
+
+<div class="stat-row">
+<div class="stat-label-line">
+<span class="stat-label">Systemlast (1/5/15 Min)</span>
+<span class="stat-value" id="loadValue">&ndash;</span>
+</div>
+</div>
+
+<div class="stat-row">
+<div class="io-grid">
+<div class="io-item"><span class="io-arrow">CPU-Takt</span><br><span class="io-value" id="cpuFreqValue">&ndash;</span></div>
+<div class="io-item"><span class="io-arrow">Prozesse</span><br><span class="io-value" id="processCountValue">&ndash;</span></div>
+</div>
+</div>
+
+<div class="stat-row">
+<div class="stat-label-line">
+<span class="stat-label">Arbeitsspeicher</span>
+<span class="stat-value" id="ramPercentValue">&ndash;</span>
+</div>
+<div class="progress-bar-bg"><div class="progress-bar-fill" id="ramBar" style="width:0%"></div></div>
+<div class="stat-sub" id="ramValue">&ndash;</div>
+</div>
+
+<div class="stat-row" id="swapRow" style="display:none;">
+<div class="stat-label-line">
+<span class="stat-label">Swap</span>
+<span class="stat-value" id="swapPercentValue">&ndash;</span>
+</div>
+<div class="progress-bar-bg"><div class="progress-bar-fill" id="swapBar" style="width:0%"></div></div>
+<div class="stat-sub" id="swapValue">&ndash;</div>
+</div>
+
+<div class="stat-row">
+<div class="stat-label">Temperatur</div>
+<div class="stat-value-big" id="tempValue">&ndash;</div>
+</div>
+
+<div class="stat-row">
+<div class="stat-label">Drossel-Status</div>
+<div class="stat-value-big" id="throttleStatus">&ndash;</div>
+<div class="stat-sub" id="throttleDetail"></div>
+</div>
+
+<div class="stat-row">
+<div class="stat-label">Betriebszeit</div>
+<div class="stat-value-big" id="uptimeValue">&ndash;</div>
+</div>
+
+<hr class="sidebar-divider">
+
+<div class="stat-row">
+<div class="stat-label">&#x1F4BD; Festplatte</div>
+<div class="io-grid">
+<div class="io-item"><span class="io-arrow">Lesen</span><br><span class="io-value" id="diskReadValue">&ndash;</span></div>
+<div class="io-item"><span class="io-arrow">Schreiben</span><br><span class="io-value" id="diskWriteValue">&ndash;</span></div>
+</div>
+</div>
+
+<div class="stat-row">
+<div class="stat-label">&#x1F310; Netzwerk</div>
+<div class="io-grid">
+<div class="io-item"><span class="io-arrow">&#x2193; Down</span><br><span class="io-value" id="netDownValue">&ndash;</span></div>
+<div class="io-item"><span class="io-arrow">&#x2191; Up</span><br><span class="io-value" id="netUpValue">&ndash;</span></div>
+</div>
+</div>
+
+<hr class="sidebar-divider">
+
+<div class="stat-row">
+<div class="stat-label">&#x1F4C1; Dateien in der Cloud</div>
+<div class="stat-value-big" id="totalFilesValue">&ndash;</div>
+</div>
+
+<div class="stat-row">
+<div class="stat-label">&#x26A1; Aktuelle Leistung</div>
+<div class="stat-value-big" id="currentPowerValue">&ndash;</div>
+</div>
+
+<hr class="sidebar-divider">
+
+<div class="stat-row">
+<div class="stat-label">&#x1F4A1; Stromkosten (geschätzt)</div>
+<div class="io-grid" style="margin-top:6px;">
+<div class="io-item"><span class="io-arrow">Monat</span><br><span class="io-value" id="energyMonthValue">&ndash;</span></div>
+<div class="io-item"><span class="io-arrow">Jahr</span><br><span class="io-value" id="energyYearValue">&ndash;</span></div>
+</div>
+<div class="stat-sub" id="energyTotalValue" style="margin-top:8px;">&ndash;</div>
+</div>
+
+<hr class="sidebar-divider">
+<h3>&#x1F4BE; Backup-Status</h3>
+
+<div class="backup-item">
+<div class="backup-item-header">
+<span class="backup-item-name">Datenbank (täglich)</span>
+<span class="backup-item-badge" id="backupDbBadge">&ndash;</span>
+</div>
+<div class="backup-item-detail">Letzter Lauf: <span id="backupDbLastRun">&ndash;</span></div>
+<div class="backup-item-detail">Nächster Lauf: <span id="backupDbNextRun">&ndash;</span></div>
+</div>
+
+
+
+
+</div>
+</aside>
+{% endif %}
+
+</div>
+<!-- /layout-grid -->
+
+<!-- Schwebendes Upload-Panel: liegt AUSSERHALB von pageContent, bleibt daher bei
+     AJAX-Ordnernavigation vollständig erhalten. Per Klick+Ziehen am Kopfbereich verschiebbar. -->
+<div class="upload-float-panel" id="floatingUploadPanel">
+<div class="upload-float-header" id="uploadFloatHeader">
+<span>&#x2B06;&#xFE0F; Upload</span>
+</div>
+<div class="upload-overall">
+<div class="stat-label-line">
+<span class="stat-label">Status</span>
+<span style="display:flex; align-items:center; gap:6px;">
+<span class="stat-value" id="uploadOverallLabel">0%</span>
+<button type="button" class="upload-cancel-btn" id="uploadCancelBtn" onclick="cancelUpload()" style="display:none;">&#xD7; Abbrechen</button>
+</span>
+</div>
+<div class="progress-bar-bg"><div class="progress-bar-fill" id="uploadOverallBar" style="width:0%"></div></div>
+</div>
+<div class="upload-file-list" id="uploadFileList"></div>
+<div class="upload-error-summary" id="uploadErrorSummary" style="display:none;"></div>
+<div class="upload-action-buttons" id="uploadActionButtons" style="display:none;">
+<button type="button" class="btn-primary" onclick="startUpload()">&#x2B06;&#xFE0F; Upload starten</button>
+<button type="button" onclick="clearPending()">Auswahl leeren</button>
+</div>
+</div>
+
+<!-- Modal für Medien-Vorschau -->
+<div id="mediaModal" class="modal" onclick="closeMedia()">
+<span class="close-btn">&times;</span>
+<button type="button" class="exif-toggle-btn" id="exifToggleBtn" style="display:none;" onclick="event.stopPropagation(); toggleExifPanel();" title="Aufnahmedaten anzeigen (Taste i)">&#x2139;&#xFE0F; Details</button>
+<div class="exif-panel" id="exifPanel" style="display:none;" onclick="event.stopPropagation()"></div>
+<button type="button" class="gallery-nav-btn gallery-nav-prev" id="galleryPrevBtn" onclick="event.stopPropagation(); galleryPrev();" title="Vorheriges Bild">&#x2039;</button>
+<div id="mediaContainer" onclick="event.stopPropagation()"></div>
+<button type="button" class="gallery-nav-btn gallery-nav-next" id="galleryNextBtn" onclick="event.stopPropagation(); galleryNext();" title="Nächstes Bild">&#x203A;</button>
+</div>
+
+<!-- Gemeinsamer Verschieben-Dialog: wird nur EINMAL pro Seite aufgebaut (nicht pro Datei),
+     zeigt die Ordnerstruktur eingerückt nach Verschachtelungstiefe an. Bedient sowohl das
+     Verschieben einer einzelnen Datei als auch die Sammel-Verschiebung. -->
+<div class="modal-overlay" id="moveDialogModal" onclick="closeMoveDialog(event)">
+<div class="confirm-dialog move-dialog" onclick="event.stopPropagation()">
+<h3>Verschieben nach...</h3>
+<div class="move-target-list" id="moveTargetList"></div>
+<div class="confirm-dialog-buttons">
+<button type="button" onclick="closeMoveDialog()">Abbrechen</button>
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="toast-stack" id="toastStack" role="status" aria-live="polite"></div>
+
+<script>
+let CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+
+// --- Einheitliche Meldungen statt alert(): unaufdringlich unten rechts, Fehler bleiben länger stehen ---
+function showToast(message, type) {
+type = type || 'info';
+const stack = document.getElementById('toastStack');
+if (!stack) return;
+const toast = document.createElement('div');
+toast.className = 'toast toast-' + type;
+toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+const icon = document.createElement('span');
+icon.className = 'toast-icon';
+icon.textContent = type === 'error' ? '\u26A0' : (type === 'success' ? '\u2713' : '\u2139');
+const text = document.createElement('span');
+text.className = 'toast-text';
+text.textContent = message;
+const close = document.createElement('button');
+close.type = 'button';
+close.className = 'toast-close';
+close.setAttribute('aria-label', 'Meldung schliessen');
+close.textContent = '\u00D7';
+const remove = () => {
+toast.classList.add('toast-hide');
+setTimeout(() => toast.remove(), 220);
+};
+close.onclick = remove;
+toast.append(icon, text, close);
+stack.appendChild(toast);
+while (stack.children.length > 4) stack.firstChild.remove();
+setTimeout(remove, type === 'error' ? 9000 : 3500);
+}
+
+// Wandelt eine fehlgeschlagene Server-Antwort in eine verständliche Meldung um. Kurze
+// Klartext-Antworten des Servers (z.B. "Zielordner nicht gefunden") werden direkt angezeigt,
+// HTML-Fehlerseiten nicht.
+function reportFailure(response, action) {
+const byStatus = {
+400: 'Die Anfrage war ungültig - bitte die Seite neu laden und erneut versuchen.',
+403: 'Keine Berechtigung für diese Aktion.',
+404: 'Nicht gefunden - wurde das Element inzwischen gelöscht oder verschoben?',
+413: 'Die Datei ist zu gross.',
+429: 'Zu viele Anfragen - bitte kurz warten.'
+};
+const fallback = byStatus[response.status] ||
+(response.status >= 500 ? 'Fehler auf dem Server - bitte später erneut versuchen.' : 'Unbekannter Fehler (' + response.status + ').');
+// Flask liefert kurze Fehlertexte ("Zielordner nicht gefunden") als text/html - daher den Text
+// immer lesen, aber nur verwenden, wenn er kurz ist und kein HTML enthält (keine Fehlerseiten).
+return response.text().then(body => {
+let detail = (body || '').trim();
+try { const j = JSON.parse(detail); detail = j.error || j.message || ''; } catch (e) { /* kein JSON */ }
+if (!detail || detail.length > 200 || detail.indexOf('<') !== -1) detail = fallback;
+showToast(action + ': ' + detail, 'error');
+}).catch(() => showToast(action + ': ' + fallback, 'error'));
+}
+
+function reportNetworkError(action) {
+showToast(action + ': keine Verbindung zum Server. Bitte Netzwerk prüfen und erneut versuchen.', 'error');
+}
+
+// Nach Ablauf der Sitzung leitet der Server auf /login um - fetch() folgt dem Redirect still
+// und meldet "ok". Das hier erkennen, statt den Fehlschlag als Erfolg zu behandeln.
+function isLoginRedirect(response) {
+return response.redirected && /\/login(\?|$)/.test(new URL(response.url).pathname + new URL(response.url).search);
+}
+
+function handleSessionExpired() {
+showToast('Die Sitzung ist abgelaufen - bitte neu anmelden.', 'error');
+setTimeout(() => { window.location.href = '/login'; }, 1800);
+}
+
+// Gemeinsame Auswertung für alle Aktionen: Erfolg -> Liste neu laden + kurze Bestätigung
+function handleActionResponse(response, action, successMessage) {
+if (isLoginRedirect(response)) { handleSessionExpired(); return; }
+if (response.ok) {
+navigateTo(location.pathname + location.search, false);
+if (successMessage) showToast(successMessage, 'success');
+} else {
+reportFailure(response, action);
+}
+}
+let CURRENT_FOLDER_ID = {{ current_folder.id if current_folder else 'null' }};
+
+function openMedia(url, type) {
+const modal = document.getElementById('mediaModal');
+const container = document.getElementById('mediaContainer');
+container.innerHTML = '';
+
+if (type === 'image') {
+const img = document.createElement('img');
+img.src = url;
+img.className = 'modal-content';
+container.appendChild(img);
+} else if (type === 'video') {
+const video = document.createElement('video');
+video.src = url;
+video.controls = true;
+video.autoplay = true;
+video.className = 'modal-content';
+container.appendChild(video);
+}
+
+modal.style.display = 'flex';
+const exifBtn = document.getElementById('exifToggleBtn');
+if (exifBtn) exifBtn.style.display = (type === 'image' && currentMediaFileId) ? '' : 'none';
+renderExifPanel();
+}
+
+function closeMedia() {
+const modal = document.getElementById('mediaModal');
+const container = document.getElementById('mediaContainer');
+modal.style.display = 'none';
+container.innerHTML = '';
+galleryImageList = [];
+currentGalleryIndex = -1;
+currentMediaFileId = null;
+const exifPanel = document.getElementById('exifPanel');
+if (exifPanel) exifPanel.style.display = 'none';
+}
+
+// --- Bild-Galerie: Vor/Zurueck-Blaettern durch alle Bilder im aktuell angezeigten Ordner ---
+let galleryImageList = [];
+let currentGalleryIndex = -1;
+
+function buildGalleryImageList() {
+galleryImageList = [];
+document.querySelectorAll('#pageContent .thumb-img[data-preview-url]').forEach(img => {
+galleryImageList.push({ id: img.dataset.fileId, url: img.dataset.previewUrl });
+});
+}
+
+let currentMediaFileId = null;
+let exifPanelOpen = false;
+const exifCache = {};
+
+function openImageByFileId(fileId) {
+currentMediaFileId = fileId;
+buildGalleryImageList();
+const idx = galleryImageList.findIndex(g => String(g.id) === String(fileId));
+currentGalleryIndex = idx;
+if (idx === -1) {
+openMedia('/preview/' + fileId, 'image');
+updateGalleryNavButtons();
+return;
+}
+showGalleryImage();
+}
+
+function showGalleryImage() {
+const item = galleryImageList[currentGalleryIndex];
+if (!item) return;
+currentMediaFileId = item.id;
+openMedia(item.url, 'image');
+updateGalleryNavButtons();
+}
+
+function toggleExifPanel() {
+exifPanelOpen = !exifPanelOpen;
+renderExifPanel();
+}
+
+function renderExifPanel() {
+const panel = document.getElementById('exifPanel');
+const btn = document.getElementById('exifToggleBtn');
+if (!panel || !btn) return;
+btn.classList.toggle('active', exifPanelOpen);
+if (!exifPanelOpen || !currentMediaFileId) { panel.style.display = 'none'; return; }
+panel.style.display = 'block';
+const fileId = String(currentMediaFileId);
+if (exifCache[fileId]) { fillExifPanel(panel, exifCache[fileId]); return; }
+panel.innerHTML = '<p class="exif-hint">Lade Aufnahmedaten ...</p>';
+fetch('/exif/' + fileId)
+.then(r => {
+if (isLoginRedirect(r)) { handleSessionExpired(); throw new Error('session'); }
+if (!r.ok) return r.json().catch(() => ({})).then(j => { throw new Error(j.error || ('HTTP ' + r.status)); });
+return r.json();
+})
+.then(data => {
+exifCache[fileId] = data;
+if (String(currentMediaFileId) === fileId) fillExifPanel(panel, data);
+})
+.catch(err => {
+if (err.message === 'session') return;
+if (String(currentMediaFileId) === fileId) {
+panel.innerHTML = '';
+const p = document.createElement('p');
+p.className = 'exif-hint';
+p.textContent = 'Aufnahmedaten konnten nicht geladen werden (' + err.message + ').';
+panel.appendChild(p);
+}
+});
+}
+
+function fillExifPanel(panel, data) {
+panel.innerHTML = '';
+const h = document.createElement('h4');
+h.textContent = data.name || 'Bilddetails';
+panel.appendChild(h);
+if (!data.felder || data.felder.length === 0) {
+const p = document.createElement('p');
+p.className = 'exif-hint';
+p.textContent = data.hinweis || 'Keine Aufnahmedaten vorhanden.';
+panel.appendChild(p);
+return;
+}
+const dl = document.createElement('dl');
+data.felder.forEach(([label, value]) => {
+const dt = document.createElement('dt');
+dt.textContent = label;
+const dd = document.createElement('dd');
+if (label === 'Ort' && data.gps) {
+const a = document.createElement('a');
+a.href = 'https://www.openstreetmap.org/?mlat=' + data.gps.lat + '&mlon=' + data.gps.lon + '#map=15/' + data.gps.lat + '/' + data.gps.lon;
+a.target = '_blank';
+a.rel = 'noopener noreferrer';
+a.textContent = value + ' \u2197';
+a.title = 'Auf OpenStreetMap anzeigen';
+dd.appendChild(a);
+} else {
+dd.textContent = value;
+}
+dl.append(dt, dd);
+});
+panel.appendChild(dl);
+if (data.hinweis) {
+const p = document.createElement('p');
+p.className = 'exif-hint';
+p.style.marginTop = '10px';
+p.textContent = data.hinweis;
+panel.appendChild(p);
+}
+}
+
+function galleryPrev() {
+if (currentGalleryIndex > 0) {
+currentGalleryIndex--;
+showGalleryImage();
+}
+}
+
+function galleryNext() {
+if (currentGalleryIndex < galleryImageList.length - 1) {
+currentGalleryIndex++;
+showGalleryImage();
+}
+}
+
+function updateGalleryNavButtons() {
+const prevBtn = document.getElementById('galleryPrevBtn');
+const nextBtn = document.getElementById('galleryNextBtn');
+if (!prevBtn || !nextBtn) return;
+const show = galleryImageList.length > 1;
+prevBtn.style.display = show ? 'flex' : 'none';
+nextBtn.style.display = show ? 'flex' : 'none';
+prevBtn.disabled = currentGalleryIndex <= 0;
+nextBtn.disabled = currentGalleryIndex >= galleryImageList.length - 1;
+}
+
+document.addEventListener('keydown', (e) => {
+const modal = document.getElementById('mediaModal');
+if (!modal || modal.style.display !== 'flex') return;
+if (e.key === 'ArrowLeft') galleryPrev();
+else if (e.key === 'ArrowRight') galleryNext();
+else if (e.key === 'Escape') closeMedia();
+else if (e.key === 'i' && document.getElementById('exifToggleBtn').style.display !== 'none') toggleExifPanel();
+});
+
+// --- Ansicht-Umschalter: Liste vs. Galerie, Wahl bleibt über localStorage erhalten ---
+function setViewMode(mode) {
+localStorage.setItem('viewMode', mode);
+applyViewMode();
+}
+
+function applyViewMode() {
+const mode = localStorage.getItem('viewMode') || 'list';
+const list = document.getElementById('contentList');
+if (list) {
+list.classList.toggle('gallery-view', mode === 'gallery');
+}
+const listBtn = document.getElementById('viewListBtn');
+const galleryBtn = document.getElementById('viewGalleryBtn');
+if (listBtn) listBtn.classList.toggle('active', mode !== 'gallery');
+if (galleryBtn) galleryBtn.classList.toggle('active', mode === 'gallery');
+}
+
+// Die Pi-Status-Sidebar behält immer ihre natürliche, unveränderte Größe (nicht
+// scrollbar, kein Zusammenstauchen). Die Inhalte-Liste übernimmt diese gemessene Höhe für
+// sich selbst - dadurch schliessen beide Kanten auf gleicher Höhe ab, weiterer Inhalt ist
+// über die Seitenauswahl erreichbar, nicht über unbegrenztes Scrollen der ganzen Seite.
+// Auf schmalen Bildschirmen (< 800px, gestapeltes Layout) greift das bewusst nicht.
+function syncContentListHeight() {
+const contentList = document.getElementById('contentList');
+const sidebar = document.querySelector('.sidebar');
+if (!contentList) return;
+
+if (window.innerWidth <= 800 || !sidebar) {
+contentList.style.maxHeight = '';
+return;
+}
+
+requestAnimationFrame(() => {
+const sidebarHeight = sidebar.getBoundingClientRect().height;
+const toolbar = document.querySelector('.list-toolbar');
+const pagination = document.querySelector('.pagination-bar');
+const heading = contentList.parentElement ? contentList.parentElement.querySelector('h2') : null;
+let reserved = 0;
+if (toolbar) reserved += toolbar.getBoundingClientRect().height;
+if (pagination) reserved += pagination.getBoundingClientRect().height;
+if (heading) reserved += heading.getBoundingClientRect().height;
+reserved += 60; // Innenabstand der Karte + Puffer
+
+const targetHeight = Math.max(200, sidebarHeight - reserved);
+contentList.style.maxHeight = targetHeight + 'px';
+});
+}
+
+window.addEventListener('resize', syncContentListHeight);
+
+// --- Sortierung & Seitenauswahl: ändern die URL-Query-Parameter der aktuellen Ordneransicht
+// und laden sie per AJAX neu (wie die normale Ordner-Navigation, kein voller Seiten-Reload). ---
+function changeSort(sortValue) {
+const url = new URL(window.location.href);
+url.searchParams.set('sort', sortValue);
+url.searchParams.set('page', '1');
+navigateTo(url.pathname + url.search, true);
+}
+
+function changePage(newPage) {
+if (newPage < 1) return;
+const url = new URL(window.location.href);
+url.searchParams.set('page', String(newPage));
+navigateTo(url.pathname + url.search, true);
+}
+
+function updateThemeIcon() {
+const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+document.getElementById('themeToggleBtn').textContent = isDark ? '\u2600\uFE0F' : '\u{1F319}';
+}
+
+function toggleTheme() {
+const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+if (isDark) {
+document.documentElement.removeAttribute('data-theme');
+localStorage.setItem('theme', 'light');
+} else {
+document.documentElement.setAttribute('data-theme', 'dark');
+localStorage.setItem('theme', 'dark');
+}
+updateThemeIcon();
+}
+
+updateThemeIcon();
+
+// --- Papierkorb: strikter Bestätigungsdialog für "endgültig leeren" ---
+function openEmptyTrashModal() {
+const input = document.getElementById('emptyTrashConfirmInput');
+const btn = document.getElementById('emptyTrashConfirmBtn');
+if (!input || !btn) return;
+input.value = '';
+btn.disabled = true;
+document.getElementById('emptyTrashModal').classList.add('visible');
+input.focus();
+}
+
+function closeEmptyTrashModal(e) {
+if (e && e.target !== document.getElementById('emptyTrashModal')) return;
+const modal = document.getElementById('emptyTrashModal');
+if (modal) modal.classList.remove('visible');
+}
+
+function checkEmptyTrashConfirm() {
+const input = document.getElementById('emptyTrashConfirmInput');
+const btn = document.getElementById('emptyTrashConfirmBtn');
+if (!input || !btn) return;
+btn.disabled = (input.value.trim() !== 'LOESCHEN');
+}
+
+// --- Elemente ausserhalb von pageContent: bleiben bei AJAX-Ordnernavigation unverändert bestehen ---
+const floatingUploadPanel = document.getElementById('floatingUploadPanel');
+const uploadFileList = document.getElementById('uploadFileList');
+const uploadOverallBar = document.getElementById('uploadOverallBar');
+const uploadOverallLabel = document.getElementById('uploadOverallLabel');
+const uploadActionButtons = document.getElementById('uploadActionButtons');
+
+let pendingFiles = [];
+let isUploading = false;
+// Laufende Zähler statt teurer .reduce()/.filter() über die komplette Warteliste bei jedem
+// einzelnen Fortschritts-Update - bei sehr grossen Batches (mehrere tausend Dateien) führte
+// das wiederholte Durchlaufen der gesamten Liste bei jedem XHR-Fortschrittsereignis zu einer
+// so starken Überlastung des Browser-Tabs, dass Uploads irgendwann mitten im Batch abbrachen.
+let totalQueuedBytes = 0;
+let totalLoadedBytes = 0;
+let completedCount = 0;
+// Automatische Verschnaufpause bei sehr grossen Batches (siehe processNext())
+const CHUNK_PAUSE_EVERY = 300;
+const CHUNK_PAUSE_MS = 3000;
+let filesProcessedSinceLastPause = 0;
+let selectedItems = { files: new Set(), folders: new Set() };
+
+// --- Mehrfachauswahl (Checkboxen pro Zeile + "Alle auswählen") ---
+function updateSelectionState() {
+selectedItems = { files: new Set(), folders: new Set() };
+document.querySelectorAll('#pageContent .item-checkbox:checked').forEach(cb => {
+if (cb.dataset.type === 'file') selectedItems.files.add(cb.dataset.id);
+else selectedItems.folders.add(cb.dataset.id);
+});
+
+const total = selectedItems.files.size + selectedItems.folders.size;
+const bar = document.getElementById('bulkActionsBar');
+const countEl = document.getElementById('bulkSelectedCount');
+if (bar) bar.style.display = total > 0 ? 'flex' : 'none';
+if (countEl) countEl.textContent = total + ' ausgewählt';
+
+const allBoxes = document.querySelectorAll('#pageContent .item-checkbox');
+const selectAllBox = document.getElementById('selectAllCheckbox');
+if (selectAllBox) {
+if (allBoxes.length === 0 || total === 0) {
+selectAllBox.checked = false;
+selectAllBox.indeterminate = false;
+} else if (total === allBoxes.length) {
+selectAllBox.checked = true;
+selectAllBox.indeterminate = false;
+} else {
+selectAllBox.checked = false;
+selectAllBox.indeterminate = true;
+}
+}
+}
+
+function toggleSelectAll(checkbox) {
+document.querySelectorAll('#pageContent .item-checkbox').forEach(cb => {
+cb.checked = checkbox.checked;
+});
+updateSelectionState();
+}
+
+// --- Gemeinsamer Verschieben-Dialog (Einzeldatei + Sammelauswahl) ---
+// Ersetzt das früher pro Datei einzeln eingebettete Dropdown (bei tausenden Dateien x vielen
+// Ordnern wurde die Seite dadurch sehr gross und langsam) - die Ordnerliste wird jetzt nur noch
+// EINMAL geladen, wenn der Dialog tatsächlich geöffnet wird, mit echter eingerückter Hierarchie.
+let moveDialogMode = null; // 'file' oder 'bulk'
+let moveDialogFileId = null;
+let moveDialogFolders = [];
+let moveDialogExpanded = new Set();
+
+function openMoveDialog(mode, fileId) {
+moveDialogMode = mode;
+moveDialogFileId = fileId || null;
+moveDialogExpanded = new Set();
+
+const modal = document.getElementById('moveDialogModal');
+const list = document.getElementById('moveTargetList');
+list.innerHTML = '<div class="move-target-loading">Lade Ordner...</div>';
+modal.classList.add('visible');
+
+fetch('/folder_tree_json')
+.then(r => r.json())
+.then(folders => {
+moveDialogFolders = folders;
+renderMoveTargets();
+})
+.catch(() => {
+list.innerHTML = '<div class="move-target-loading">Ordner konnten nicht geladen werden.</div>';
+});
+}
+
+function closeMoveDialog(e) {
+if (e && e.target !== document.getElementById('moveDialogModal')) return;
+document.getElementById('moveDialogModal').classList.remove('visible');
+moveDialogMode = null;
+moveDialogFileId = null;
+}
+
+function renderMoveTargets() {
+const list = document.getElementById('moveTargetList');
+list.innerHTML = '';
+
+const rootRow = document.createElement('div');
+rootRow.className = 'move-target-row move-target-root';
+rootRow.textContent = '/ (Hauptverzeichnis)';
+rootRow.onclick = () => selectMoveTarget('root');
+list.appendChild(rootRow);
+
+// Kinder-Zuordnung aufbauen ('root' als Schlüssel für Ordner ohne Elternordner,
+// da JSON keine echten null-Schluessel in Objekten kennt)
+const childrenByParent = {};
+moveDialogFolders.forEach(f => {
+const key = f.parent_id === null || f.parent_id === undefined ? 'root' : f.parent_id;
+if (!childrenByParent[key]) childrenByParent[key] = [];
+childrenByParent[key].push(f);
+});
+
+function renderLevel(parentKey) {
+(childrenByParent[parentKey] || []).forEach(f => {
+const row = document.createElement('div');
+row.className = 'move-target-row';
+row.style.paddingLeft = (4 + f.depth * 20) + 'px';
+
+const toggle = document.createElement('span');
+toggle.className = 'move-target-toggle';
+if (f.has_children) {
+toggle.textContent = moveDialogExpanded.has(f.id) ? '\u2212' : '+';
+toggle.onclick = (e) => {
+e.stopPropagation();
+if (moveDialogExpanded.has(f.id)) {
+moveDialogExpanded.delete(f.id);
+} else {
+moveDialogExpanded.add(f.id);
+}
+renderMoveTargets();
+};
+} else {
+toggle.classList.add('move-target-toggle-empty');
+}
+row.appendChild(toggle);
+
+const label = document.createElement('span');
+label.className = 'move-target-label';
+label.textContent = '\u{1F4C1} ' + f.name;
+label.onclick = () => selectMoveTarget(f.id);
+row.appendChild(label);
+
+list.appendChild(row);
+
+if (f.has_children && moveDialogExpanded.has(f.id)) {
+renderLevel(f.id);
+}
+});
+}
+
+renderLevel('root');
+}
+
+function selectMoveTarget(targetValue) {
+closeMoveDialog();
+if (moveDialogMode === 'file' && moveDialogFileId !== null) {
+performSingleFileMove(moveDialogFileId, targetValue);
+} else if (moveDialogMode === 'bulk') {
+performBulkMove(targetValue);
+}
+}
+
+function performSingleFileMove(fileId, targetValue) {
+const formData = new FormData();
+formData.append('csrf_token', CSRF_TOKEN);
+formData.append('target_folder_id', targetValue);
+fetch('/move_file/' + fileId, { method: 'POST', body: formData })
+.then(r => handleActionResponse(r, 'Verschieben fehlgeschlagen', 'Datei verschoben.'))
+.catch(() => reportNetworkError('Verschieben fehlgeschlagen'));
+}
+
+function performBulkMove(targetValue) {
+if (!targetValue) return;
+if (selectedItems.files.size === 0 && selectedItems.folders.size === 0) return;
+const formData = new FormData();
+formData.append('csrf_token', CSRF_TOKEN);
+formData.append('target_folder_id', targetValue);
+selectedItems.files.forEach(id => formData.append('file_ids', id));
+selectedItems.folders.forEach(id => formData.append('folder_ids', id));
+const movedCount = selectedItems.files.size + selectedItems.folders.size;
+fetch('/bulk_move', { method: 'POST', body: formData })
+.then(r => handleActionResponse(r, 'Verschieben fehlgeschlagen', movedCount + ' Element(e) verschoben.'))
+.catch(() => reportNetworkError('Verschieben fehlgeschlagen'));
+}
+
+function performBulkDelete() {
+const total = selectedItems.files.size + selectedItems.folders.size;
+if (total === 0) return;
+if (!confirm(total + ' Element(e) in den Papierkorb verschieben?')) return;
+const formData = new FormData();
+formData.append('csrf_token', CSRF_TOKEN);
+selectedItems.files.forEach(id => formData.append('file_ids', id));
+selectedItems.folders.forEach(id => formData.append('folder_ids', id));
+fetch('/bulk_delete', { method: 'POST', body: formData })
+.then(r => handleActionResponse(r, 'Löschen fehlgeschlagen', total + ' Element(e) in den Papierkorb verschoben.'))
+.catch(() => reportNetworkError('Löschen fehlgeschlagen'));
+}
+
+function performBulkDownload() {
+if (selectedItems.files.size === 0 && selectedItems.folders.size === 0) return;
+const form = document.createElement('form');
+form.method = 'POST';
+form.action = '/bulk_download';
+form.style.display = 'none';
+
+const csrfInput = document.createElement('input');
+csrfInput.name = 'csrf_token';
+csrfInput.value = CSRF_TOKEN;
+form.appendChild(csrfInput);
+
+selectedItems.files.forEach(id => {
+const inp = document.createElement('input');
+inp.name = 'file_ids';
+inp.value = id;
+form.appendChild(inp);
+});
+selectedItems.folders.forEach(id => {
+const inp = document.createElement('input');
+inp.name = 'folder_ids';
+inp.value = id;
+form.appendChild(inp);
+});
+
+document.body.appendChild(form);
+form.submit();
+setTimeout(() => form.remove(), 1000);
+}
+
+// --- Umbenennen (Dateien & Ordner), direkt in der Liste editierbar ---
+function startRename(type, id) {
+const display = document.getElementById('itemNameDisplay-' + type + '-' + id);
+const input = document.getElementById('itemNameInput-' + type + '-' + id);
+if (!display || !input) return;
+display.style.display = 'none';
+input.style.display = 'inline-block';
+input.focus();
+input.select();
+}
+
+function cancelRename(type, id) {
+const display = document.getElementById('itemNameDisplay-' + type + '-' + id);
+const input = document.getElementById('itemNameInput-' + type + '-' + id);
+if (!display || !input) return;
+input.style.display = 'none';
+display.style.display = '';
+}
+
+function submitRename(type, id) {
+const input = document.getElementById('itemNameInput-' + type + '-' + id);
+if (!input || input.style.display === 'none') return;
+const newName = input.value.trim();
+if (!newName) {
+cancelRename(type, id);
+return;
+}
+const url = type === 'file' ? '/rename_file/' + id : '/rename_folder/' + id;
+const formData = new FormData();
+formData.append('csrf_token', CSRF_TOKEN);
+formData.append('new_name', newName);
+fetch(url, { method: 'POST', body: formData })
+.then(r => handleActionResponse(r, 'Umbenennen fehlgeschlagen', 'Umbenannt in \u201E' + newName + '\u201C.'))
+.catch(() => reportNetworkError('Umbenennen fehlgeschlagen'));
+}
+
+function handleRenameKeydown(e, type, id) {
+if (e.key === 'Enter') {
+e.preventDefault();
+submitRename(type, id);
+} else if (e.key === 'Escape') {
+e.preventDefault();
+cancelRename(type, id);
+}
+}
+
+// --- Elemente INNERHALB von pageContent: werden bei jedem Ordnerwechsel per AJAX neu erzeugt,
+// daher müssen ihre Event-Listener nach jeder Navigation über initDropzoneHandlers() neu gesetzt werden. ---
+let dropzone, dropzoneText, fileInput, mediaInput, folderInput, chooseFilesBtn, chooseMediaBtn, chooseFolderBtn;
+
+function initDropzoneHandlers() {
+applyViewMode();
+syncContentListHeight();
+
+dropzone = document.getElementById('dropzone');
+dropzoneText = document.getElementById('dropzoneText');
+fileInput = document.getElementById('fileInput');
+mediaInput = document.getElementById('mediaInput');
+folderInput = document.getElementById('folderInput');
+chooseFilesBtn = document.getElementById('chooseFilesBtn');
+chooseMediaBtn = document.getElementById('chooseMediaBtn');
+chooseFolderBtn = document.getElementById('chooseFolderBtn');
+if (!dropzone) return;
+
+['dragenter', 'dragover'].forEach(evt => {
+dropzone.addEventListener(evt, (e) => {
+e.preventDefault();
+e.stopPropagation();
+dropzone.classList.add('dragover');
+});
+});
+['dragleave', 'drop'].forEach(evt => {
+dropzone.addEventListener(evt, (e) => {
+e.preventDefault();
+e.stopPropagation();
+dropzone.classList.remove('dragover');
+});
+});
+dropzone.addEventListener('drop', handleDrop);
+
+fileInput.addEventListener('change', () => {
+const arr = Array.from(fileInput.files).map(f => ({ file: f, relativePath: null }));
+addToPending(arr);
+fileInput.value = '';
+});
+
+mediaInput.addEventListener('change', () => {
+const arr = Array.from(mediaInput.files).map(f => ({ file: f, relativePath: null }));
+addToPending(arr);
+mediaInput.value = '';
+});
+
+folderInput.addEventListener('change', () => {
+const arr = Array.from(folderInput.files).map(f => ({ file: f, relativePath: f.webkitRelativePath || null }));
+addToPending(arr);
+folderInput.value = '';
+});
+
+setUploadControlsEnabled(true);
+}
+
+function traverseFileTree(item, path) {
+path = path || "";
+return new Promise((resolve) => {
+if (item.isFile) {
+item.file((file) => {
+resolve([{ file: file, relativePath: path + file.name }]);
+});
+} else if (item.isDirectory) {
+const dirReader = item.createReader();
+let allEntries = [];
+function readEntries() {
+dirReader.readEntries((entries) => {
+if (entries.length === 0) {
+Promise.all(allEntries.map(e => traverseFileTree(e, path + item.name + "/")))
+.then(results => resolve(results.flat()));
+} else {
+allEntries = allEntries.concat(entries);
+readEntries();
+}
+});
+}
+readEntries();
+} else {
+resolve([]);
+}
+});
+}
+
+async function handleDrop(e) {
+if (isUploading) return;
+const items = e.dataTransfer.items;
+if (!items || items.length === 0) return;
+
+const entries = [];
+for (let i = 0; i < items.length; i++) {
+const entry = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
+if (entry) entries.push(entry);
+}
+
+if (entries.length === 0) {
+const arr = Array.from(e.dataTransfer.files).map(f => ({ file: f, relativePath: null }));
+addToPending(arr);
+return;
+}
+
+dropzoneText.textContent = 'Lese Ordnerstruktur...';
+const results = await Promise.all(entries.map(entry => traverseFileTree(entry)));
+const flatFiles = results.flat();
+dropzoneText.innerHTML = '&#x1F4C2; Dateien oder ganze Ordner<br>hierher ziehen';
+addToPending(flatFiles);
+}
+
+function escapeHtml(str) {
+const div = document.createElement('div');
+div.textContent = str;
+return div.innerHTML;
+}
+
+function getCurrentFolderLabel() {
+const strongEl = document.querySelector('#pageContent .breadcrumb strong');
+return strongEl ? strongEl.textContent.trim() : 'Hauptverzeichnis';
+}
+
+let nextRowId = 0;
+
+function addToPending(entries) {
+if (!entries.length) return;
+
+// Falls der letzte Batch bereits vollständig fertig ist (alle Einträge in einem Endzustand,
+// niemand löscht die Liste manuell), räumen wir automatisch auf, bevor der neue Batch
+// dazukommt - sonst würden die Bytes des alten, bereits abgeschlossenen Batches fälschlich
+// in die Fortschrittsanzeige des neuen Batches mit einfliessen (zu hoher Startwert).
+if (!isUploading && pendingFiles.length > 0) {
+const allDone = pendingFiles.every(f => f.status === 'done' || f.status === 'error' || f.status === 'cancelled');
+if (allDone) {
+pendingFiles = [];
+totalQueuedBytes = 0;
+totalLoadedBytes = 0;
+completedCount = 0;
+uploadFileList.innerHTML = '';
+document.getElementById('uploadErrorSummary').style.display = 'none';
+}
+}
+
+const folderId = CURRENT_FOLDER_ID;
+const folderLabel = getCurrentFolderLabel();
+entries.forEach(e => {
+e.folderId = folderId;
+e.folderLabel = folderLabel;
+e.status = 'queued';
+e.loaded = 0;
+e.rowId = nextRowId++;
+totalQueuedBytes += e.file.size;
+});
+pendingFiles.push(...entries);
+appendRows(entries);
+updateOverallStatus();
+floatingUploadPanel.classList.add('visible');
+if (!isUploading) {
+uploadActionButtons.style.display = 'flex';
+}
+// Hinweis: Läuft bereits ein Upload, entdeckt die laufende Verarbeitungskette
+// (processNext -> uploadOne -> processNext) neu hinzugefügte Dateien automatisch
+// bei ihrer nächsten Runde - ein erneuter Aufruf hier würde einen zweiten,
+// parallel laufenden Upload starten, was wir bewusst vermeiden wollen.
+}
+
+function appendRows(entries) {
+entries.forEach(entry => {
+const row = document.createElement('div');
+row.className = 'upload-file-row queued';
+row.id = 'uploadFileRow-' + entry.rowId;
+row.innerHTML =
+'<div class="upload-file-name-line">' +
+'<span class="upload-file-name-text">' + escapeHtml(entry.relativePath || entry.file.name) + '</span>' +
+'<span class="upload-file-pct">wartet</span>' +
+'<button type="button" class="upload-remove-btn" onclick="removePendingFile(' + entry.rowId + ')" title="Aus Warteliste entfernen">&#xD7;</button>' +
+'</div>' +
+'<span class="upload-file-folder-tag">-&gt; ' + escapeHtml(entry.folderLabel || 'Hauptverzeichnis') + '</span>' +
+'<div class="upload-file-bar-bg"><div class="upload-file-bar-fill"></div></div>';
+uploadFileList.appendChild(row);
+});
+}
+
+function removePendingFile(rowId) {
+const idx = pendingFiles.findIndex(f => f.rowId === rowId);
+if (idx === -1) return;
+if (pendingFiles[idx].status !== 'queued') return;
+totalQueuedBytes -= pendingFiles[idx].file.size;
+pendingFiles.splice(idx, 1);
+const row = document.getElementById('uploadFileRow-' + rowId);
+if (row) row.remove();
+if (pendingFiles.length === 0 && !isUploading) {
+clearPending();
+} else {
+updateOverallStatus();
+}
+}
+
+function clearPending() {
+if (isUploading) return;
+pendingFiles = [];
+totalQueuedBytes = 0;
+totalLoadedBytes = 0;
+completedCount = 0;
+uploadFileList.innerHTML = '';
+document.getElementById('uploadErrorSummary').style.display = 'none';
+floatingUploadPanel.classList.remove('visible');
+}
+
+function updateOverallStatus() {
+const pct = totalQueuedBytes > 0 ? Math.min(100, Math.round((totalLoadedBytes / totalQueuedBytes) * 100)) : 0;
+uploadOverallBar.style.width = pct + '%';
+if (isUploading) {
+uploadOverallLabel.textContent = pct + '% - ' + completedCount + ' von ' + pendingFiles.length + ' Datei(en)';
+} else {
+uploadOverallLabel.textContent = pendingFiles.length + ' Datei(en) bereit';
+}
+}
+
+function updateRowProgress(entry, percent) {
+const row = document.getElementById('uploadFileRow-' + entry.rowId);
+if (!row) return;
+const fill = row.querySelector('.upload-file-bar-fill');
+const pct = row.querySelector('.upload-file-pct');
+fill.style.width = percent + '%';
+pct.textContent = percent + '%';
+}
+
+function updateRowStatus(entry, state) {
+const row = document.getElementById('uploadFileRow-' + entry.rowId);
+if (!row) return;
+const fill = row.querySelector('.upload-file-bar-fill');
+const pct = row.querySelector('.upload-file-pct');
+const removeBtn = row.querySelector('.upload-remove-btn');
+if (removeBtn) removeBtn.remove();
+row.classList.remove('queued');
+if (state === 'done') {
+row.classList.add('done');
+fill.style.width = '100%';
+pct.textContent = '\u2713';
+} else if (state === 'error') {
+row.classList.add('error');
+pct.textContent = 'Fehler';
+} else if (state === 'cancelled') {
+row.classList.add('cancelled');
+pct.textContent = 'Abgebrochen';
+}
+}
+
+function setUploadControlsEnabled(enabled) {
+if (!dropzone) return;
+fileInput.disabled = !enabled;
+folderInput.disabled = !enabled;
+chooseFilesBtn.classList.toggle('label-disabled', !enabled);
+chooseMediaBtn.classList.toggle('label-disabled', !enabled);
+chooseFolderBtn.classList.toggle('label-disabled', !enabled);
+dropzone.style.pointerEvents = enabled ? 'auto' : 'none';
+}
+
+function formatBytes(bytes) {
+if (bytes >= 1024 * 1024 * 1024) return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
+return bytes + ' B';
+}
+
+let currentXhr = null;
+let uploadCancelled = false;
+let lastFailedEntries = null;
+
+function cancelUpload() {
+if (!isUploading) return;
+uploadCancelled = true;
+if (currentXhr) {
+currentXhr.abort();
+}
+}
+
+function startUpload() {
+if (isUploading || pendingFiles.length === 0) return;
+
+const totalSize = pendingFiles.reduce((sum, f) => sum + f.file.size, 0);
+const fileWord = pendingFiles.length === 1 ? 'Datei' : 'Dateien';
+const confirmed = confirm(
+'Wirklich ' + pendingFiles.length + ' ' + fileWord + ' (' + formatBytes(totalSize) + ') hochladen?'
+);
+if (!confirmed) return;
+
+beginProcessing();
+}
+
+function retryFailedUploads() {
+if (!lastFailedEntries || !lastFailedEntries.length) return;
+const retryEntries = lastFailedEntries;
+lastFailedEntries = null;
+retryEntries.forEach(e => {
+e.status = 'queued';
+e.loaded = 0;
+e.errorReason = null;
+e.rowId = nextRowId++;
+});
+pendingFiles = retryEntries;
+totalQueuedBytes = retryEntries.reduce((sum, f) => sum + f.file.size, 0);
+totalLoadedBytes = 0;
+completedCount = 0;
+uploadFileList.innerHTML = '';
+document.getElementById('uploadErrorSummary').style.display = 'none';
+appendRows(pendingFiles);
+beginProcessing();
+}
+
+function beginProcessing() {
+isUploading = true;
+uploadCancelled = false;
+filesProcessedSinceLastPause = 0;
+uploadActionButtons.style.display = 'none';
+document.getElementById('uploadCancelBtn').style.display = 'inline-flex';
+document.getElementById('uploadErrorSummary').style.display = 'none';
+floatingUploadPanel.classList.add('visible');
+updateOverallStatus();
+processNext();
+}
+
+const MAX_UPLOAD_RETRIES = 3;
+
+function refreshCsrfToken() {
+return fetch('/csrf_token')
+.then(r => r.json())
+.then(data => {
+if (data && data.csrf_token) {
+CSRF_TOKEN = data.csrf_token;
+const metaTag = document.querySelector('meta[name="csrf-token"]');
+if (metaTag) metaTag.content = data.csrf_token;
+}
+})
+.catch(() => {});
+}
+
+function uploadOne(entry, retryCount) {
+retryCount = retryCount || 0;
+return new Promise((resolve) => {
+const displayName = entry.relativePath || entry.file.name;
+const formData = new FormData();
+formData.append('csrf_token', CSRF_TOKEN);
+formData.append('folder_id', (entry.folderId !== null && entry.folderId !== undefined) ? entry.folderId : '');
+formData.append('file', entry.file);
+formData.append('relative_path', displayName);
+const extractZipCheckbox = document.getElementById('extractZipCheckbox');
+formData.append('extract_zip', (extractZipCheckbox && extractZipCheckbox.checked) ? '1' : '0');
+
+const xhr = new XMLHttpRequest();
+currentXhr = xhr;
+xhr.open('POST', '/upload');
+
+xhr.upload.addEventListener('progress', (e) => {
+if (e.lengthComputable) {
+const previousLoaded = entry.loaded || 0;
+totalLoadedBytes += (e.loaded - previousLoaded);
+entry.loaded = e.loaded;
+updateOverallStatus();
+updateRowProgress(entry, Math.round((e.loaded / e.total) * 100));
+}
+});
+
+xhr.addEventListener('load', () => {
+const ok = xhr.status >= 200 && xhr.status < 400;
+if (ok) {
+totalLoadedBytes += (entry.file.size - (entry.loaded || 0));
+entry.loaded = entry.file.size;
+entry.status = 'done';
+completedCount++;
+updateRowStatus(entry, 'done');
+updateOverallStatus();
+resolve();
+return;
+}
+
+// Automatische Wiederholung bei fehlgeschlagenen Dateien (z.B. kurzer Netzwerk-Aussetzer
+// mitten in einem sehr grossen Batch) - bis zu 3 Versuche, statt sofort aufzugeben.
+if (retryCount < MAX_UPLOAD_RETRIES && !uploadCancelled) {
+const responseText = (xhr.responseText || '');
+const isCsrfError = xhr.status === 400 && /csrf/i.test(responseText);
+
+if (isCsrfError) {
+// Abgelaufenes/fehlendes Token: frisches Token holen, dann erneut versuchen
+refreshCsrfToken().then(() => {
+uploadOne(entry, retryCount + 1).then(resolve);
+});
+} else {
+setTimeout(() => {
+if (uploadCancelled) { resolve(); return; }
+uploadOne(entry, retryCount + 1).then(resolve);
+}, 2000);
+}
+return;
+}
+
+totalLoadedBytes += (entry.file.size - (entry.loaded || 0));
+entry.loaded = entry.file.size;
+entry.status = 'error';
+completedCount++;
+entry.errorReason = (xhr.responseText || '').trim() || ('Fehlercode ' + xhr.status);
+updateRowStatus(entry, 'error');
+updateOverallStatus();
+resolve();
+});
+
+xhr.addEventListener('error', () => {
+if (retryCount < MAX_UPLOAD_RETRIES && !uploadCancelled) {
+setTimeout(() => {
+if (uploadCancelled) { resolve(); return; }
+uploadOne(entry, retryCount + 1).then(resolve);
+}, 2000);
+return;
+}
+entry.status = 'error';
+completedCount++;
+entry.errorReason = 'Netzwerkfehler / Verbindung unterbrochen (nach ' + (MAX_UPLOAD_RETRIES + 1) + ' Versuchen)';
+updateRowStatus(entry, 'error');
+updateOverallStatus();
+resolve();
+});
+
+xhr.addEventListener('abort', () => {
+entry.status = 'cancelled';
+completedCount++;
+entry.errorReason = 'Abgebrochen';
+updateRowStatus(entry, 'cancelled');
+updateOverallStatus();
+resolve();
+});
+
+xhr.send(formData);
+});
+}
+
+function processNext() {
+if (uploadCancelled) {
+pendingFiles.forEach(f => {
+if (f.status === 'queued') {
+f.status = 'cancelled';
+f.errorReason = 'Abgebrochen';
+updateRowStatus(f, 'cancelled');
+}
+});
+finishProcessing();
+return;
+}
+const next = pendingFiles.find(f => f.status === 'queued');
+if (!next) {
+finishProcessing();
+return;
+}
+next.status = 'uploading';
+moveRowToTop(next);
+filesProcessedSinceLastPause++;
+
+// Automatische Verschnaufpause nach jeweils 300 Dateien: repliziert das Verhalten, das sich
+// beim manuellen Aufteilen sehr grosser Batches (mehrere tausend Dateien) als zuverlässig
+// erwiesen hat - ein durchgehender Strom sehr vieler aufeinanderfolgender Anfragen in einer
+// einzigen Browser-Sitzung schien gelegentlich zu vereinzelten, sonst unerklärlichen
+// Fehlschlägen zu führen.
+if (filesProcessedSinceLastPause >= CHUNK_PAUSE_EVERY) {
+filesProcessedSinceLastPause = 0;
+setTimeout(() => {
+if (uploadCancelled) { processNext(); return; }
+uploadOne(next).then(() => { processNext(); });
+}, CHUNK_PAUSE_MS);
+return;
+}
+
+uploadOne(next).then(() => {
+processNext();
+});
+}
+
+function moveRowToTop(entry) {
+const row = document.getElementById('uploadFileRow-' + entry.rowId);
+if (row && uploadFileList && row.parentElement === uploadFileList) {
+uploadFileList.insertBefore(row, uploadFileList.firstChild);
+}
+if (uploadFileList) uploadFileList.scrollTop = 0;
+}
+
+function finishProcessing() {
+// Falls während der Verarbeitung noch etwas als 'queued' nachgekommen ist
+// (z.B. durch eine sehr knapp getimte Ergänzung), sicherheitshalber weitermachen.
+if (pendingFiles.some(f => f.status === 'queued') && !uploadCancelled) {
+processNext();
+return;
+}
+
+isUploading = false;
+currentXhr = null;
+document.getElementById('uploadCancelBtn').style.display = 'none';
+const summaryEl = document.getElementById('uploadErrorSummary');
+const failed = pendingFiles.filter(f => f.status === 'error' || f.status === 'cancelled');
+
+if (failed.length > 0) {
+uploadOverallLabel.textContent = uploadCancelled ? 'Abgebrochen' : 'Fertig, aber mit Fehlern - siehe unten';
+
+const wordFile = failed.length === 1 ? 'Datei konnte' : 'Dateien konnten';
+let html = '<strong>' + failed.length + ' ' + wordFile + ' nicht hochgeladen werden:</strong><ul>';
+failed.forEach(f => {
+html += '<li>' + escapeHtml(f.relativePath || f.file.name) + '<br><span class="error-reason">' + escapeHtml(f.errorReason || '') + '</span></li>';
+});
+html += '</ul><button type="button" class="btn-primary retry-btn" onclick="retryFailedUploads()">Wiederholen</button>';
+summaryEl.innerHTML = html;
+summaryEl.style.display = 'block';
+lastFailedEntries = failed;
+
+pendingFiles = pendingFiles.filter(f => f.status !== 'error' && f.status !== 'cancelled');
+} else {
+summaryEl.style.display = 'none';
+summaryEl.innerHTML = '';
+uploadOverallLabel.textContent = 'Fertig!';
+setTimeout(() => {
+floatingUploadPanel.classList.remove('visible');
+pendingFiles = [];
+uploadFileList.innerHTML = '';
+navigateTo(location.pathname + location.search, false);
+}, 900);
+}
+}
+
+// --- AJAX-Ordnernavigation: Ordnerwechsel/Aktionen laden nur den Inhaltsbereich neu,
+// die restliche Seite (inkl. laufendem Upload im schwebenden Panel) bleibt komplett erhalten. ---
+let navigationSeq = 0;
+
+function navigateTo(url, pushState, options) {
+options = options || {};
+const seq = ++navigationSeq;
+fetch(url, { headers: { 'X-Partial-Request': 'true' } })
+.then(r => {
+if (isLoginRedirect(r)) { handleSessionExpired(); throw new Error('session'); }
+return r.text();
+})
+.then(html => {
+if (seq !== navigationSeq) return; // eine neuere Navigation (z.B. weitergetippt) ist schon unterwegs
+// Was im Suchfeld inzwischen weitergetippt wurde, darf das Neuladen nicht überschreiben
+const oldSearch = document.getElementById('searchInput');
+const typed = oldSearch ? oldSearch.value : null;
+const caret = oldSearch && document.activeElement === oldSearch ? oldSearch.selectionStart : null;
+document.getElementById('pageContent').innerHTML = html;
+if (options.replaceState) history.replaceState({}, '', url);
+else if (pushState) history.pushState({}, '', url);
+const newSearch = document.getElementById('searchInput');
+if (newSearch && options.keepSearchFocus) {
+if (typed !== null) newSearch.value = typed;
+newSearch.focus();
+const pos = caret !== null ? Math.min(caret, newSearch.value.length) : newSearch.value.length;
+newSearch.setSelectionRange(pos, pos);
+}
+const match = url.match(/\/folder\/(\d+)/);
+CURRENT_FOLDER_ID = match ? parseInt(match[1], 10) : null;
+selectedItems = { files: new Set(), folders: new Set() };
+initDropzoneHandlers();
+window.scrollTo(0, 0);
+})
+.catch(err => {
+if (err && err.message === 'session') return;
+window.location.href = url;
+});
+}
+
+// --- Live-Suche: durchsucht beim Tippen alle eigenen Dateien und Ordner (serverseitig, ?q=...) ---
+let searchTimer = null;
+
+function onSearchInput(value) {
+clearTimeout(searchTimer);
+searchTimer = setTimeout(() => runSearch(value), 300);
+}
+
+function runSearch(value) {
+const url = new URL(window.location.href);
+const q = (value || '').trim();
+if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+url.searchParams.delete('page');
+navigateTo(url.pathname + url.search, false, { replaceState: true, keepSearchFocus: true });
+}
+
+function clearSearch() {
+clearTimeout(searchTimer);
+const input = document.getElementById('searchInput');
+if (input) input.value = '';
+runSearch('');
+}
+
+// Strg/Cmd+F bzw. "/" springt ins Suchfeld (ausser beim Tippen in anderen Feldern)
+document.addEventListener('keydown', function(e) {
+const tag = (e.target.tagName || '').toLowerCase();
+const typing = tag === 'input' || tag === 'textarea' || e.target.isContentEditable;
+const modalOpen = document.getElementById('mediaModal') && document.getElementById('mediaModal').style.display === 'flex';
+if (modalOpen || typing) return;
+if (e.key === '/' || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k')) {
+const input = document.getElementById('searchInput');
+if (input) { e.preventDefault(); input.focus(); input.select(); }
+}
+});
+
+window.addEventListener('popstate', function() {
+navigateTo(location.pathname + location.search, false);
+});
+
+document.addEventListener('click', function(e) {
+const link = e.target.closest('a.nav-link');
+if (!link) return;
+e.preventDefault();
+navigateTo(link.getAttribute('href'), true);
+});
+
+// Passende Texte je Formular-Aktion (Löschen, Ordner anlegen, Papierkorb ...)
+function describeFormAction(path) {
+if (path.startsWith('/delete_file/')) return ['Löschen fehlgeschlagen', 'Datei in den Papierkorb verschoben.'];
+if (path.startsWith('/delete_folder/')) return ['Löschen fehlgeschlagen', 'Ordner in den Papierkorb verschoben.'];
+if (path.startsWith('/create_folder')) return ['Ordner konnte nicht angelegt werden', 'Ordner angelegt.'];
+if (path.startsWith('/restore_')) return ['Wiederherstellen fehlgeschlagen', 'Wiederhergestellt.'];
+if (path.startsWith('/delete_permanently/')) return ['Endgültiges Löschen fehlgeschlagen', 'Endgültig gelöscht.'];
+if (path.startsWith('/trash/empty')) return ['Papierkorb leeren fehlgeschlagen', 'Papierkorb geleert.'];
+return ['Aktion fehlgeschlagen', ''];
+}
+
+document.addEventListener('submit', function(e) {
+const form = e.target;
+if (!form.classList.contains('ajax-form')) return;
+if (e.defaultPrevented) return;
+e.preventDefault();
+const formData = new FormData(form);
+const actionPath = new URL(form.action, location.href).pathname;
+const [failText, okText] = describeFormAction(actionPath);
+fetch(form.action, { method: 'POST', body: formData })
+.then(r => handleActionResponse(r, failText, okText))
+.catch(() => reportNetworkError(failText));
+});
+
+// --- Schwebendes Panel per Klick+Ziehen am Kopfbereich verschiebbar (Maus & Touch) ---
+(function() {
+const panel = floatingUploadPanel;
+const handle = document.getElementById('uploadFloatHeader');
+let dragging = false, offsetX = 0, offsetY = 0;
+
+function startDrag(clientX, clientY) {
+dragging = true;
+const rect = panel.getBoundingClientRect();
+offsetX = clientX - rect.left;
+offsetY = clientY - rect.top;
+panel.style.right = 'auto';
+panel.style.bottom = 'auto';
+panel.style.left = rect.left + 'px';
+panel.style.top = rect.top + 'px';
+}
+function moveDrag(clientX, clientY) {
+if (!dragging) return;
+panel.style.left = (clientX - offsetX) + 'px';
+panel.style.top = (clientY - offsetY) + 'px';
+}
+function endDrag() { dragging = false; }
+
+handle.addEventListener('mousedown', (e) => { startDrag(e.clientX, e.clientY); e.preventDefault(); });
+document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+document.addEventListener('mouseup', endDrag);
+
+handle.addEventListener('touchstart', (e) => {
+const t = e.touches[0];
+startDrag(t.clientX, t.clientY);
+}, { passive: true });
+document.addEventListener('touchmove', (e) => {
+if (!dragging) return;
+const t = e.touches[0];
+moveDrag(t.clientX, t.clientY);
+});
+document.addEventListener('touchend', endDrag);
+})();
+
+initDropzoneHandlers();
+
+// --- Pi-Systemstatus (Sidebar): live aktualisiert per Polling ---
+let lastSystemStats = null;
+
+function formatRate(bytesPerSec) {
+if (bytesPerSec < 0 || !isFinite(bytesPerSec)) bytesPerSec = 0;
+if (bytesPerSec >= 1024 * 1024) return (bytesPerSec / (1024 * 1024)).toFixed(1) + ' MB/s';
+if (bytesPerSec >= 1024) return (bytesPerSec / 1024).toFixed(0) + ' KB/s';
+return Math.round(bytesPerSec) + ' B/s';
+}
+
+function updateBackupItem(prefix, info) {
+const badge = document.getElementById(prefix + 'Badge');
+const lastRun = document.getElementById(prefix + 'LastRun');
+const nextRun = document.getElementById(prefix + 'NextRun');
+if (!badge || !info) return;
+
+badge.classList.remove('backup-ok', 'backup-warning', 'backup-stale');
+
+if (info.last_run) {
+lastRun.textContent = info.last_run + ' Uhr';
+if (!info.ok) {
+badge.textContent = 'Achtung';
+badge.classList.add('backup-warning');
+} else if (info.stale) {
+badge.textContent = 'Überfällig';
+badge.classList.add('backup-stale');
+} else {
+badge.textContent = 'OK';
+badge.classList.add('backup-ok');
+}
+} else {
+lastRun.textContent = 'noch nie';
+badge.textContent = 'Achtung';
+badge.classList.add('backup-warning');
+}
+nextRun.textContent = info.next_run + ' Uhr';
+}
+
+function fetchSystemStats() {
+fetch('/system_stats')
+.then(r => r.json())
+.then(data => {
+document.getElementById('cpuValue').textContent = data.cpu_percent + ' %';
+const cpuBar = document.getElementById('cpuBar');
+cpuBar.style.width = data.cpu_percent + '%';
+cpuBar.classList.toggle('warning', data.cpu_percent >= 85);
+
+const coresEl = document.getElementById('cpuCores');
+if (coresEl && Array.isArray(data.cpu_percent_per_core)) {
+coresEl.innerHTML = '';
+data.cpu_percent_per_core.forEach(pct => {
+const bar = document.createElement('div');
+bar.className = 'cpu-core-bar';
+bar.title = Math.round(pct) + ' %';
+const fill = document.createElement('div');
+fill.className = 'cpu-core-bar-fill';
+fill.style.height = pct + '%';
+bar.appendChild(fill);
+coresEl.appendChild(bar);
+});
+}
+
+const loadEl = document.getElementById('loadValue');
+if (data.load1 !== null && data.load1 !== undefined) {
+loadEl.textContent = data.load1 + ' / ' + data.load5 + ' / ' + data.load15;
+} else {
+loadEl.textContent = 'n/a';
+}
+
+document.getElementById('cpuFreqValue').textContent = data.cpu_freq_mhz ? (data.cpu_freq_mhz + ' MHz') : 'n/a';
+document.getElementById('processCountValue').textContent = data.process_count;
+
+document.getElementById('ramPercentValue').textContent = data.ram_percent + ' %';
+const ramBar = document.getElementById('ramBar');
+ramBar.style.width = data.ram_percent + '%';
+ramBar.classList.toggle('warning', data.ram_percent >= 85);
+document.getElementById('ramValue').textContent = data.ram_used_mb + ' / ' + data.ram_total_mb + ' MB';
+
+const swapRow = document.getElementById('swapRow');
+if (data.swap_total_mb > 0) {
+swapRow.style.display = 'block';
+document.getElementById('swapPercentValue').textContent = data.swap_percent + ' %';
+const swapBar = document.getElementById('swapBar');
+swapBar.style.width = data.swap_percent + '%';
+swapBar.classList.toggle('warning', data.swap_percent >= 50);
+document.getElementById('swapValue').textContent = data.swap_used_mb + ' / ' + data.swap_total_mb + ' MB';
+} else {
+swapRow.style.display = 'none';
+}
+
+const tempEl = document.getElementById('tempValue');
+if (data.temp_c !== null && data.temp_c !== undefined) {
+tempEl.textContent = data.temp_c + ' \u00B0C';
+tempEl.classList.toggle('stat-warning', data.temp_c >= 70);
+} else {
+tempEl.textContent = 'n/a';
+}
+
+const throttleStatusEl = document.getElementById('throttleStatus');
+const throttleDetailEl = document.getElementById('throttleDetail');
+if (data.throttled === null || data.throttled === undefined) {
+throttleStatusEl.textContent = 'n/a';
+throttleDetailEl.textContent = 'vcgencmd nicht verfügbar';
+} else {
+const t = data.throttled;
+const activeIssues = [];
+if (t.under_voltage_now) activeIssues.push('Unterspannung');
+if (t.throttled_now) activeIssues.push('Gedrosselt');
+if (t.temp_limit_now) activeIssues.push('Temperaturlimit');
+if (t.freq_capped_now) activeIssues.push('Taktrate begrenzt');
+
+if (activeIssues.length > 0) {
+throttleStatusEl.textContent = 'Achtung!';
+throttleStatusEl.classList.add('stat-warning');
+throttleDetailEl.textContent = activeIssues.join(', ') + ' - JETZT aktiv';
+} else {
+throttleStatusEl.textContent = 'OK';
+throttleStatusEl.classList.remove('stat-warning');
+const everIssues = [];
+if (t.under_voltage_occurred) everIssues.push('Unterspannung');
+if (t.throttled_occurred) everIssues.push('Drosselung');
+if (t.temp_limit_occurred) everIssues.push('Temperaturlimit');
+if (t.freq_capped_occurred) everIssues.push('Taktbegrenzung');
+throttleDetailEl.textContent = everIssues.length > 0
+? ('Früher aufgetreten: ' + everIssues.join(', '))
+: 'Nie aufgetreten';
+}
+}
+
+document.getElementById('uptimeValue').textContent = data.uptime;
+document.getElementById('totalFilesValue').textContent = data.total_files;
+
+const powerEl = document.getElementById('currentPowerValue');
+if (powerEl) {
+if (data.total_power_watts !== null && data.total_power_watts !== undefined) {
+powerEl.textContent = data.total_power_watts.toFixed(2) + ' W';
+} else {
+powerEl.textContent = 'n/a';
+}
+}
+
+if (data.energy) {
+document.getElementById('energyMonthValue').textContent = data.energy.month_cost.toFixed(2) + ' EUR';
+document.getElementById('energyYearValue').textContent = data.energy.year_cost.toFixed(2) + ' EUR';
+document.getElementById('energyTotalValue').textContent =
+'Gesamt: ' + data.energy.total_cost.toFixed(2) + ' EUR (' + data.energy.total_kwh.toFixed(1) + ' kWh)';
+}
+
+if (data.backup_status) {
+updateBackupItem('backupDb', data.backup_status.db_backup);
+}
+
+if (lastSystemStats) {
+const dt = data.timestamp - lastSystemStats.timestamp;
+if (dt > 0) {
+const readRate = (data.disk_read_bytes - lastSystemStats.disk_read_bytes) / dt;
+const writeRate = (data.disk_write_bytes - lastSystemStats.disk_write_bytes) / dt;
+const downRate = (data.net_recv_bytes - lastSystemStats.net_recv_bytes) / dt;
+const upRate = (data.net_sent_bytes - lastSystemStats.net_sent_bytes) / dt;
+
+document.getElementById('diskReadValue').textContent = formatRate(readRate);
+document.getElementById('diskWriteValue').textContent = formatRate(writeRate);
+document.getElementById('netDownValue').textContent = formatRate(downRate);
+document.getElementById('netUpValue').textContent = formatRate(upRate);
+}
+}
+lastSystemStats = data;
+})
+.catch(() => {});
+}
+if (document.getElementById('cpuValue')) {
+fetchSystemStats();
+setInterval(fetchSystemStats, 5000);
+}
+</script>
+</body>
+</html>

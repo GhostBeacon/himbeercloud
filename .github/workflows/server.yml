@@ -1,0 +1,36 @@
+name: Server
+
+on:
+  push:
+    paths:
+      - 'app/**'
+      - 'scripts/**'
+      - 'deploy/**'
+      - 'tests/**'
+      - '.github/workflows/server.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Rauchtest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'   # wie Raspberry Pi OS (Bookworm)
+      - name: Abhaengigkeiten
+        run: |
+          sudo apt-get install -y -qq sqlite3
+          pip install -r app/requirements.txt
+      - name: Syntax
+        run: |
+          python -m py_compile app/*.py
+          for f in scripts/*.sh deploy/*.sh; do bash -n "$f"; done
+          shellcheck -S warning scripts/*.sh deploy/*.sh
+      - name: Tests
+        run: python -m unittest discover -s tests -v

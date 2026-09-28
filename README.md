@@ -1,1 +1,152 @@
-# raspicloud
+# RaspiCloud
+
+Eine schlanke, selbst gehostete Cloud für Dateien und Fotos auf dem **Raspberry Pi**: Weboberfläche für Computer und Handy, mit Zwei-Faktor-Anmeldung. Die Daten bleiben bei dir: zum Start auf der SD-Karte, später auf einer eigenen Festplatte am Pi.
+
+Gebaut mit Flask, Gunicorn und SQLite. Kein Docker, keine Datenbank-Server, kein Konto bei Dritten nötig.
+
+## Funktionen
+
+- **Dateien und Ordner:** hochladen (auch sehr große Mengen, mit Warteschlange und Fortschritt), Ordner anlegen, umbenennen, verschieben, Mehrfachauswahl, ZIP-Download, ZIP-Import mit Ordnerstruktur
+- **Suche** über alle eigenen Dateien und Ordner (Taste `/` oder `Strg/Cmd+K`), Sortierung nach Name, Datum, Typ und Größe, Listen- und Galerieansicht
+- **Vorschaubilder und Bildbetrachter** für JPG, PNG, WEBP, GIF, **HEIC** (iPhone), **RAW** (Canon CR2/CR3) und **PDF**; Bilddetails (EXIF)
+- **Papierkorb:** Wiederherstellen, endgültiges Leeren nur nach Eintippen von `LOESCHEN`
+- **Mehrere Benutzer**, jeder sieht nur die eigenen Dateien; optional mit Speicherlimit
+- **Zwei-Faktor-Anmeldung** (TOTP, jede Authenticator-App)
+- **Mobile Ansicht** im Browser, speziell für das Handy
+- **Pi-Status** in der Seitenleiste: CPU, RAM, Temperatur, Drosselung, Durchsatz, Plattenbelegung, geschätzte Stromkosten, Status des Datenbank-Backups
+- **Tägliches Datenbank-Backup** mit Integritätsprüfung; mit Backup-Festplatte zusätzlich wöchentliche Spiegelung aller Dateien; optional Push-Meldung über [ntfy](https://ntfy.sh)
+- Schlichte, moderne Oberfläche mit Hell- und Dunkelmodus
+
+## Voraussetzungen
+
+- Raspberry Pi 4 oder 5 mit **Raspberry Pi OS (Bookworm, 64 Bit)**. Die Leistung misst nur der Pi 5 direkt, auf dem Pi 4 wird sie geschätzt. Andere Debian-Systeme gehen auch, dann fehlen Leistungs- und Drosselwerte.
+- **Keine Festplatte nötig zum Start:** In der Grundeinrichtung liegen die Dateien auf der SD-Karte. Später lässt sich ausbauen:
+
+  | Stufe | Speicher | Sicherung der Dateien |
+  |---|---|---|
+  | Grundeinrichtung | SD-Karte | – |
+  | Ausbau 1 | USB-Festplatte oder SSD (Dateien ziehen automatisch um) | – |
+  | Ausbau 2 | wie Ausbau 1 | zweite Festplatte, wöchentliche Spiegelung |
+- Für den Zugriff von unterwegs: eine **Domain** (auch DynDNS), Portfreigabe 80 und 443 im Router und [Caddy](https://caddyserver.com) als HTTPS-Proxy. Alternativ nur im Heimnetz oder über ein VPN betreiben.
+
+## Einrichtung
+
+**Am einfachsten mit dem Einrichtungsassistenten.** Er führt mit Menüs durch die Grundeinrichtung (Installation, Benutzer, Domain mit HTTPS oder Heimnetz, Firewall) und später durch die Ausbaustufen (Speicher-Festplatte mit automatischem Umzug der Dateien, Backup-Festplatte):
+
+```bash
+sudo apt install -y git
+sudo git clone https://github.com/GhostBeacon/raspicloud.git /opt/raspicloud
+sudo /opt/raspicloud/deploy/setup.sh
+```
+
+**Ausführliche Schritt-für-Schritt-Anleitung** vom leeren Pi bis zum Zugriff von unterwegs, mit allen Stufen auch von Hand (Domain, Router, HTTPS, Firewall, Festplatten, Sicherung, Fehlerbehebung): **[INSTALL.md](INSTALL.md)**. Hier die Kurzfassung der Grundeinrichtung von Hand:
+
+### 1. Installieren
+
+```bash
+sudo apt install -y git
+sudo git clone https://github.com/GhostBeacon/raspicloud.git /opt/raspicloud
+sudo /opt/raspicloud/deploy/install.sh
+```
+
+Das Skript installiert die Pakete, legt den Dienstbenutzer `raspicloud` an, erzeugt `/etc/raspicloud/raspicloud.env` mit einem zufälligen `SECRET_KEY`, richtet die Python-Umgebung, die Datenbank, den systemd-Dienst und die Cronjobs ein. Danach läuft die Cloud auf `127.0.0.1:5000`, die Dateien liegen unter `/srv/raspicloud`.
+
+### 2. Ersten Benutzer anlegen
+
+```bash
+cd /opt/raspicloud/app
+sudo -u raspicloud ../venv/bin/python3 manage.py add-user
+```
+
+Benutzer ohne Speicherlimit sehen die Belegung des ganzen Speichers, Benutzer mit Limit nur ihr eigenes Kontingent. 2FA richtet jeder nach der Anmeldung selbst in der Weboberfläche ein.
+
+### 3. HTTPS mit Caddy
+
+```bash
+sudo apt install -y caddy
+sudo cp /opt/raspicloud/deploy/Caddyfile.example /etc/caddy/Caddyfile
+sudo nano /etc/caddy/Caddyfile               # cloud.example.org durch die eigene Domain ersetzen
+sudo systemctl reload caddy
+```
+
+Caddy holt das Zertifikat bei Let's Encrypt automatisch. Die Cloud selbst lauscht nur auf `127.0.0.1` und ist nie direkt erreichbar.
+
+Nur im Heimnetz ohne Domain und HTTPS: in `/etc/raspicloud/raspicloud.env` die Zeile `RASPICLOUD_INSECURE_COOKIE=1` ergänzen, sonst funktioniert die Anmeldung über `http://` nicht. Von außen erreichbar sollte die Cloud so nicht sein.
+
+### 4. Einstellungen
+
+Alles steht in `/etc/raspicloud/raspicloud.env` (Vorlage: [`deploy/raspicloud.env.example`](deploy/raspicloud.env.example)). Nach einer Änderung: `sudo systemctl restart raspicloud`.
+
+| Einstellung | Bedeutung |
+|---|---|
+| `SECRET_KEY` | Pflicht, geheimer Schlüssel für die Sitzungen (erzeugt `install.sh`) |
+| `RASPICLOUD_DATA_DIR` | Ordner für die Dateien, Standard `/srv/raspicloud` (mit Ausbau 1 ist dort die Festplatte eingehängt) |
+| `RASPICLOUD_DB` | Benutzer-Datenbank, Standard `/var/lib/raspicloud/users.db` |
+| `RASPICLOUD_BACKUP_MOUNT` | Ausbau 2: Backup-Platte, Standard `/srv/raspicloud-backup` |
+| `RASPICLOUD_POWER_PRICE` | Strompreis in EUR/kWh für die Kostenanzeige (Standard 0,35) |
+| `RASPICLOUD_HDD_WATTS` | pauschale Leistung externer Festplatten in Watt (0 ohne Platte, der Assistent setzt 7 je Platte) |
+| `NTFY_TOPIC`, `NTFY_SERVER` | optional: Push-Meldung nach jedem Backup |
+
+## Aktualisieren
+
+```bash
+cd /opt/raspicloud && sudo git pull
+sudo /opt/raspicloud/deploy/install.sh
+```
+
+Einstellungen, Datenbank und Dateien bleiben dabei erhalten.
+
+## Verwaltung auf dem Pi
+
+Alle Befehle im Ordner `/opt/raspicloud/app`:
+
+| Befehl | Zweck |
+|---|---|
+| `sudo -u raspicloud ../venv/bin/python3 manage.py add-user` | Benutzer anlegen |
+| `sudo -u raspicloud ../venv/bin/python3 manage.py list-users` | Benutzer auflisten |
+| `sudo -u raspicloud ../venv/bin/python3 reset_password.py` | Passwort neu setzen |
+| `sudo -u raspicloud ../venv/bin/python3 emergency_disable_2fa.py` | 2FA abschalten, wenn das Handy weg ist |
+| `sudo -u raspicloud ../venv/bin/python3 empty_trash_all.py` | Papierkorb aller Benutzer leeren |
+| `bulk_import.py` | große Datenmengen direkt vom Pi importieren (Anleitung im Kopf der Datei) |
+| `journalctl -u raspicloud -f` | Log des Dienstes |
+
+## Datensicherung
+
+`scripts/backup_db.sh` sichert täglich um 3:10 Uhr die **Datenbank** (Benutzer, Ordner, Dateiliste) nach `/srv/raspicloud/backups`, prüft die Kopie und hebt 14 Tage auf. Die **hochgeladenen Dateien** werden erst mit **Ausbau 2** gesichert: Dann landet die Datenbank-Kopie zusätzlich auf der Backup-Platte, und jeden Sonntag werden alle Dateien nach `/srv/raspicloud-backup/dateien` gespiegelt. Wiederherstellen: [INSTALL.md, Abschnitt 14](INSTALL.md#14-datensicherung-und-wiederherstellung).
+
+## Aufbau
+
+```
+app/              Flask-Anwendung (Weboberfläche) und Verwaltungsskripte
+  app.py          Weboberfläche, Anmeldung, Upload, Vorschaubilder, Pi-Status
+  manage.py       Datenbank anlegen, Benutzer verwalten
+  templates/      Seiten (Desktop, Mobil, Anmeldung, 2FA)
+  static/icons/   Symbole (Favicon, Startbildschirm)
+scripts/          Backup, Gesundheitsprüfung, ntfy-Meldung
+deploy/           setup.sh (Einrichtungsassistent), install.sh, systemd-Dienst, Cronjobs, Einstellungsvorlage, Caddy-Beispiel
+tools/            make_icons.py erzeugt die Browser-Symbole
+tests/            Rauchtest (python -m unittest discover -s tests)
+```
+
+## Sicherheit
+
+- Anmeldung mit Passwort und optional TOTP; 5 Fehlversuche pro IP sperren 15 Minuten (falsche 2FA-Codes zählen mit)
+- CSRF-Schutz, sichere Cookies, Abmeldung nach 12 Stunden Inaktivität
+- Jede Datenbankabfrage ist auf den angemeldeten Benutzer beschränkt
+- Hochgeladene HTML-, SVG- und ähnliche Dateien werden nur als Download ausgeliefert, nie im Browser ausgeführt
+- Der Dienst läuft als eigener Benutzer ohne Login-Shell und darf nur in Datenbank- und Datenordner schreiben
+
+Mehr in [SECURITY.md](SECURITY.md).
+
+## Selbst ausprobieren (ohne Pi)
+
+```bash
+python3 -m venv venv && venv/bin/pip install -r app/requirements.txt
+export SECRET_KEY=test RASPICLOUD_INSECURE_COOKIE=1 RASPICLOUD_DB=$PWD/test.db RASPICLOUD_DATA_DIR=$PWD/testdata
+venv/bin/python3 app/manage.py add-user
+cd app && ../venv/bin/flask --app app run      # http://127.0.0.1:5000
+```
+
+## Lizenz
+
+[MIT](LICENSE)

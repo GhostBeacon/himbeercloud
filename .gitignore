@@ -1,0 +1,44 @@
+# ---- Nie ins Repository (siehe SECURITY.md) -------------------------------
+# Zugangsdaten und Standortwerte
+.env
+.env.*
+*.env
+!*.env.example
+!.env.example
+site.env
+local_settings.py
+*_token
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+# Datenbanken, Dumps, Images
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sql
+*.sql.gz
+*.img
+*.img.gz
+# Laufzeit- und Sicherungsdateien
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.log
+logs/*
+!logs/.gitkeep
+*.bak
+*.bak-*
+*.bak_*
+*.bak.*
+*.orig
+*~
+*.zip
+# Betriebssystem / Editor
+.DS_Store
+.idea/
+.vscode/
+

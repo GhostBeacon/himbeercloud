@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="icon" type="image/svg+xml" href="/static/icons/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
+<title>RaspiCloud</title>
+<style>
+:root {
+--bg: #f8fafc;
+--card-bg: #ffffff;
+--text: #1e293b;
+--text-muted: #64748b;
+--heading: #0f172a;
+--border: #e2e8f0;
+--btn-primary-bg: #1e293b;
+--btn-primary-text: #ffffff;
+--danger: #ef4444;
+--hover-bg: #f1f5f9;
+}
+[data-theme="dark"] {
+--bg: #0f172a;
+--card-bg: #1e293b;
+--text: #e2e8f0;
+--text-muted: #94a3b8;
+--heading: #f8fafc;
+--border: #334155;
+--btn-primary-bg: #3b82f6;
+--btn-primary-text: #ffffff;
+--danger: #f87171;
+--hover-bg: #334155;
+}
+* { box-sizing: border-box; }
+body {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+background: var(--bg);
+color: var(--text);
+margin: 0;
+padding: 44px 12px 12px 12px;
+font-size: 16px;
+}
+h1 { font-size: 1.3em; margin: 0 0 4px 0; color: var(--heading); }
+h2 { font-size: 1.05em; margin: 0 0 10px 0; color: var(--heading); }
+.top-bar {
+display: flex;
+justify-content: space-between;
+align-items: flex-start;
+margin-bottom: 14px;
+}
+.storage-line {
+font-size: 0.82em;
+color: var(--text-muted);
+margin-top: 2px;
+}
+.logout-link {
+font-size: 0.85em;
+color: var(--text-muted);
+text-decoration: none;
+padding: 8px 10px;
+border: 1px solid var(--border);
+border-radius: 8px;
+}
+.breadcrumb {
+font-size: 0.85em;
+color: var(--text-muted);
+margin-bottom: 14px;
+line-height: 1.6;
+word-break: break-word;
+}
+.breadcrumb a { color: var(--text-muted); text-decoration: underline; }
+.breadcrumb strong { color: var(--heading); }
+.card {
+background: var(--card-bg);
+border: 1px solid var(--border);
+border-radius: 12px;
+padding: 14px;
+margin-bottom: 14px;
+}
+.btn {
+display: inline-block;
+padding: 11px 14px;
+border-radius: 8px;
+border: 1px solid var(--border);
+background: var(--card-bg);
+color: var(--text);
+font-size: 0.9em;
+text-decoration: none;
+text-align: center;
+cursor: pointer;
+}
+.btn-primary {
+background: var(--btn-primary-bg);
+color: var(--btn-primary-text);
+border-color: var(--btn-primary-bg);
+}
+.btn-danger { color: var(--danger); border-color: var(--danger); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.btn-row .btn { flex: 1; min-width: 100px; }
+input[type="text"] {
+width: 100%;
+padding: 11px 12px;
+border-radius: 8px;
+border: 1px solid var(--border);
+background: var(--bg);
+color: var(--text);
+font-size: 0.95em;
+margin-bottom: 8px;
+}
+.checkbox-label {
+display: flex;
+align-items: center;
+gap: 8px;
+font-size: 0.85em;
+color: var(--text-muted);
+margin-top: 10px;
+}
+.checkbox-label input { width: 18px; height: 18px; }
+input[type="file"] { display: none; }
+ul { list-style: none; padding: 0; margin: 0; }
+li {
+display: flex;
+align-items: center;
+gap: 10px;
+padding: 10px 4px;
+border-bottom: 1px solid var(--border);
+}
+li:last-child { border-bottom: none; }
+.item-icon { font-size: 1.4em; flex-shrink: 0; width: 32px; text-align: center; }
+.thumb-img {
+width: 40px;
+height: 40px;
+object-fit: cover;
+border-radius: 6px;
+flex-shrink: 0;
+}
+.item-link {
+flex: 1;
+min-width: 0;
+color: var(--heading);
+text-decoration: none;
+font-weight: 600;
+font-size: 0.9em;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+}
+.item-size {
+font-size: 0.78em;
+color: var(--text-muted);
+white-space: nowrap;
+flex-shrink: 0;
+}
+.item-delete-form { flex-shrink: 0; }
+.item-delete-btn {
+background: none;
+border: none;
+color: var(--text-muted);
+font-size: 1.2em;
+padding: 6px;
+cursor: pointer;
+}
+.empty-msg { color: var(--text-muted); font-style: italic; padding: 10px 4px; }
+.list-toolbar {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 10px;
+}
+.sort-select {
+padding: 8px 10px;
+border-radius: 8px;
+border: 1px solid var(--border);
+background: var(--card-bg);
+color: var(--text);
+font-size: 0.85em;
+}
+.pagination-bar {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-top: 14px;
+padding-top: 12px;
+border-top: 1px solid var(--border);
+font-size: 0.85em;
+}
+
+/* ============ Ansicht-Umschalter & Galerie ============ */
+.view-toggle-btn {
+padding: 8px 10px;
+font-size: 1em;
+line-height: 1;
+}
+.view-toggle-btn.active {
+background: var(--btn-primary-bg);
+color: var(--btn-primary-text);
+border-color: var(--btn-primary-bg);
+}
+.gallery-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 4px;
+margin-top: 8px;
+}
+.gallery-tile {
+position: relative;
+aspect-ratio: 1;
+border-radius: 6px;
+overflow: hidden;
+background: var(--hover-bg);
+}
+.gallery-thumb {
+width: 100%;
+height: 100%;
+object-fit: cover;
+display: block;
+}
+.gallery-video-tile {
+width: 100%;
+height: 100%;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 1.6em;
+text-decoration: none;
+color: var(--text-muted);
+}
+.gallery-checkbox {
+position: absolute;
+top: 4px;
+left: 4px;
+z-index: 5;
+width: 20px;
+height: 20px;
+}
+
+/* ============ Titel ============ */
+.title-anchor {
+position: relative;
+display: inline-block;
+}
+
+/* ============ Mehrfachauswahl & Verschieben ============ */
+.item-checkbox { width: 20px; height: 20px; flex-shrink: 0; }
+.bulk-bar {
+display: none;
+align-items: center;
+gap: 8px;
+background: var(--card-bg);
+border: 1px solid var(--border);
+border-radius: 10px;
+padding: 10px 12px;
+margin-bottom: 10px;
+position: sticky;
+top: 8px;
+z-index: 30;
+}
+.bulk-bar.visible { display: flex; }
+.bulk-count { font-size: 0.85em; color: var(--text-muted); flex: 1; }
+.move-target-list {
+max-height: 300px;
+overflow-y: auto;
+border: 1px solid var(--border);
+border-radius: 8px;
+margin: 10px 0;
+}
+.move-target-row {
+padding: 12px;
+border-bottom: 1px solid var(--border);
+font-size: 0.9em;
+}
+.move-target-row:last-child { border-bottom: none; }
+.modal-overlay {
+display: none;
+position: fixed;
+inset: 0;
+background: rgba(15, 23, 42, 0.6);
+z-index: 100;
+align-items: flex-end;
+justify-content: center;
+}
+.modal-overlay.visible { display: flex; }
+.search-form { display: flex; gap: 8px; margin-bottom: 10px; }
+.search-input {
+flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px;
+border: 1px solid var(--border-strong, var(--border)); background: var(--card-bg); color: var(--text); font-size: 16px;
+}
+.search-banner { font-size: 0.85em; color: var(--text-muted); background: var(--hover-bg, transparent);
+border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+.search-location { display: block; font-size: 0.75em; color: var(--text-muted); text-decoration: none;
+white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.btn-info { padding: 6px 10px; flex-shrink: 0; }
+.gallery-tile { position: relative; }
+.gallery-info-btn { position: absolute; right: 6px; bottom: 6px; width: 30px; height: 30px; border-radius: 50%;
+border: none; background: rgba(15, 23, 42, 0.65); color: #f8fafc; font-size: 15px; line-height: 30px; padding: 0; }
+.exif-list { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; margin: 0 0 14px; font-size: 0.9em; }
+.exif-list dt { color: var(--text-muted); }
+.exif-list dd { margin: 0; word-break: break-word; }
+.exif-hint { color: var(--text-muted); font-style: italic; font-size: 0.9em; }
+.modal-sheet {
+background: var(--card-bg);
+border-radius: 14px 14px 0 0;
+padding: 16px;
+width: 100%;
+max-width: 480px;
+max-height: 80vh;
+overflow-y: auto;
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+<div class="title-anchor">
+<h1>RaspiCloud</h1>
+<div class="storage-line">
+{% if disk %}{{ disk.used_gb }} / {{ disk.total_gb }} GB belegt{% endif %}
+</div>
+</div>
+<a href="/logout" class="logout-link">Abmelden</a>
+</div>
+
+<div class="breadcrumb">
+<a href="/">Hauptverzeichnis</a>
+{% for crumb in breadcrumb_path %}
+/ {% if not loop.last %}<a href="/folder/{{ crumb.id }}">{{ crumb.name }}</a>{% else %}<strong>{{ crumb.name }}</strong>{% endif %}
+{% endfor %}
+</div>
+
+<!-- Hochladen -->
+<div class="card">
+<h2>Hochladen</h2>
+<form action="/upload" method="post" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="folder_id" value="{{ current_folder.id if current_folder else '' }}">
+<input type="hidden" name="relative_path" value="">
+<label class="checkbox-label" style="margin-top:0; margin-bottom:10px;">
+<input type="checkbox" name="extract_zip" value="1">
+ZIP-Dateien automatisch entpacken
+</label>
+<div class="btn-row">
+<label class="btn btn-primary" for="mobileFileInput">Dateien wählen</label>
+<label class="btn btn-primary" for="mobileMediaInput">&#x1F5BC;&#xFE0F; Fotos/Videos</label>
+</div>
+<input type="file" id="mobileFileInput" name="file" multiple onchange="this.form.submit()">
+<input type="file" id="mobileMediaInput" name="file" accept="image/*,video/*" multiple onchange="this.form.submit()">
+</form>
+</div>
+
+<!-- Neuen Ordner erstellen -->
+<div class="card">
+<h2>Neuen Ordner erstellen</h2>
+<form action="/create_folder" method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="parent_id" value="{{ current_folder.id if current_folder else '' }}">
+<input type="text" name="folder_name" placeholder="Ordnername" required>
+<button type="submit" class="btn btn-primary" style="width:100%;">Ordner anlegen</button>
+</form>
+</div>
+
+<!-- Inhalte -->
+<div class="card">
+{% set display_mode = request.args.get('display', 'list') %}
+{% set base_url = ('/folder/' + current_folder.id|string) if current_folder else '/' %}
+{% set q_param = ('&q=' + (search.q|urlencode)) if search else '' %}
+<div class="list-toolbar">
+<h2 style="margin:0;">Inhalte</h2>
+<div style="display:flex; gap:6px;">
+<a href="{{ base_url }}?sort={{ pagination.sort }}&display=list{{ q_param }}" class="btn view-toggle-btn {{ 'active' if display_mode != 'gallery' }}" title="Liste">&#x2630;</a>
+<a href="{{ base_url }}?sort={{ pagination.sort }}&display=gallery{{ q_param }}" class="btn view-toggle-btn {{ 'active' if display_mode == 'gallery' }}" title="Galerie">&#x25A6;</a>
+</div>
+</div>
+<form method="get" action="{{ base_url }}" class="search-form" role="search">
+<input type="search" name="q" class="search-input" value="{{ search.q if search else '' }}" placeholder="&#x1F50D; Alle Dateien durchsuchen"
+       enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Alle Dateien und Ordner durchsuchen">
+<input type="hidden" name="sort" value="{{ pagination.sort }}">
+<input type="hidden" name="display" value="{{ display_mode }}">
+{% if search %}<a href="{{ base_url }}?sort={{ pagination.sort }}&display={{ display_mode }}" class="btn" title="Suche beenden">&#x2715;</a>{% endif %}
+</form>
+{% if search %}
+<div class="search-banner">Suche nach <strong>&bdquo;{{ search.q }}&ldquo;</strong> im gesamten Speicher:
+{{ search.total_files }} Datei{{ '' if search.total_files == 1 else 'en' }}{% if search.total_folders %}, {{ search.total_folders }} Ordner{% endif %}</div>
+{% endif %}
+<div class="list-toolbar">
+<select class="sort-select" onchange="location.href = this.value">
+<option value="{{ base_url }}?sort=name_asc&display={{ display_mode }}{{ q_param }}" {% if pagination.sort == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
+<option value="{{ base_url }}?sort=name_desc&display={{ display_mode }}{{ q_param }}" {% if pagination.sort == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+<option value="{{ base_url }}?sort=date_desc&display={{ display_mode }}{{ q_param }}" {% if pagination.sort == 'date_desc' %}selected{% endif %}>Neueste zuerst</option>
+<option value="{{ base_url }}?sort=date_asc&display={{ display_mode }}{{ q_param }}" {% if pagination.sort == 'date_asc' %}selected{% endif %}>Älteste zuerst</option>
+<option value="{{ base_url }}?sort=type_asc&display={{ display_mode }}{{ q_param }}" {% if pagination.sort == 'type_asc' %}selected{% endif %}>Dateiformat</option>
+<option value="{{ base_url }}?sort=size_desc&display={{ display_mode }}{{ q_param }}" {% if pagination.sort == 'size_desc' %}selected{% endif %}>Größte zuerst</option>
+<option value="{{ base_url }}?sort=size_asc&display={{ display_mode }}{{ q_param }}" {% if pagination.sort == 'size_asc' %}selected{% endif %}>Kleinste zuerst</option>
+</select>
+</div>
+
+<form id="bulkForm" method="post" action="/bulk_delete">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="redirect_to" value="{{ request.full_path }}">
+<input type="hidden" name="target_folder_id" id="targetFolderIdField" value="">
+
+<div class="bulk-bar" id="bulkBar">
+<span class="bulk-count" id="bulkCount">0 ausgewählt</span>
+<button type="button" class="btn" onclick="openMoveSheet()">Verschieben</button>
+<button type="submit" class="btn btn-danger" onclick="return confirm('Ausgewählte Elemente in den Papierkorb verschieben?');">Löschen</button>
+</div>
+
+<ul>
+{% for folder in folders %}
+<li>
+<input type="checkbox" class="item-checkbox" name="folder_ids" value="{{ folder.id }}" onchange="updateBulkBar()">
+<span class="item-icon">&#x1F4C1;</span>
+<span class="item-main">
+<a href="/folder/{{ folder.id }}" class="item-link">{{ folder.name }}</a>
+{% if search %}<a href="{{ '/folder/%d' % folder.location_id if folder.location_id else '/' }}" class="search-location">in {{ folder.location }}</a>{% endif %}
+</span>
+<span class="item-size">{{ folder.size_mb }} MB</span>
+</li>
+{% endfor %}
+
+{% if display_mode != 'gallery' %}
+{% for file in files %}
+{% set ext = file.original_name.rsplit('.', 1)[-1].lower() if '.' in file.original_name else '' %}
+<li>
+<input type="checkbox" class="item-checkbox" name="file_ids" value="{{ file.id }}" onchange="updateBulkBar()">
+{% if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'cr3', 'cr2', 'heic', 'heif', 'pdf'] %}
+<img src="/thumbnail/{{ file.id }}" alt="" class="thumb-img" loading="lazy">
+{% else %}
+<span class="item-icon">&#x1F4C4;</span>
+{% endif %}
+<span class="item-main">
+{% if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'cr3', 'cr2', 'heic', 'heif', 'pdf', 'mp4', 'webm', 'mov'] %}
+<a href="/preview/{{ file.id }}" target="_blank" class="item-link">{{ file.original_name }}</a>
+{% else %}
+<a href="/download/{{ file.id }}" class="item-link">{{ file.original_name }}</a>
+{% endif %}
+{% if search %}<a href="{{ '/folder/%d' % file.location_id if file.location_id else '/' }}" class="search-location">in {{ file.location }}</a>{% endif %}
+</span>
+<span class="item-size">{{ file.size_mb }} MB</span>
+{% if ext in ['jpg', 'jpeg', 'png', 'webp', 'cr3', 'cr2', 'heic', 'heif'] %}
+<button type="button" class="btn btn-info" onclick="showDetails({{ file.id }})" title="Bilddetails" aria-label="Bilddetails">&#x2139;&#xFE0F;</button>
+{% endif %}
+</li>
+{% endfor %}
+{% endif %}
+
+{% if not folders and not files %}
+<li class="empty-msg">{% if search %}Keine Treffer für &bdquo;{{ search.q }}&ldquo;.{% else %}Dieser Ordner ist leer.{% endif %}</li>
+{% endif %}
+</ul>
+
+{% if display_mode == 'gallery' and files %}
+<div class="gallery-grid">
+{% for file in files %}
+{% set ext = file.original_name.rsplit('.', 1)[-1].lower() if '.' in file.original_name else '' %}
+<div class="gallery-tile">
+<input type="checkbox" class="item-checkbox gallery-checkbox" name="file_ids" value="{{ file.id }}" onchange="updateBulkBar()">
+{% if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'cr3', 'cr2', 'heic', 'heif'] %}
+<a href="/preview/{{ file.id }}" target="_blank"><img src="/thumbnail/{{ file.id }}" alt="" class="gallery-thumb" loading="lazy"></a>
+{% if ext != 'gif' %}<button type="button" class="gallery-info-btn" onclick="showDetails({{ file.id }})" aria-label="Bilddetails">&#x2139;</button>{% endif %}
+{% elif ext in ['mp4', 'webm', 'mov'] %}
+<a href="/preview/{{ file.id }}" target="_blank" class="gallery-video-tile">&#x25B6;&#xFE0F;</a>
+{% else %}
+<a href="/download/{{ file.id }}" class="gallery-video-tile">&#x1F4C4;</a>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+</form>
+
+{% if pagination.total_pages > 1 %}
+<div class="pagination-bar">
+{% set page_base = base_url + '?sort=' + pagination.sort + '&display=' + display_mode + q_param + '&page=' %}
+{% if pagination.has_prev %}
+<a href="{{ page_base }}{{ pagination.page - 1 }}" class="btn">&#x2039; Zurück</a>
+{% else %}
+<span></span>
+{% endif %}
+<span>Seite {{ pagination.page }} / {{ pagination.total_pages }}</span>
+{% if pagination.has_next %}
+<a href="{{ page_base }}{{ pagination.page + 1 }}" class="btn">Weiter &#x203A;</a>
+{% else %}
+<span></span>
+{% endif %}
+</div>
+{% endif %}
+</div>
+
+<!-- Verschieben-Dialog: als Bottom-Sheet, Ordnerliste wird bei Bedarf nachgeladen -->
+<div class="modal-overlay" id="moveOverlay" onclick="if (event.target === this) closeMoveSheet();">
+<div class="modal-sheet">
+<h2>Verschieben nach...</h2>
+<div class="move-target-list" id="moveTargetList"></div>
+<button type="button" class="btn" style="width:100%;" onclick="closeMoveSheet()">Abbrechen</button>
+</div>
+</div>
+
+<!-- Bilddetails (EXIF) als Bottom-Sheet -->
+<div class="modal-overlay" id="detailsOverlay" onclick="if (event.target === this) closeDetails();">
+<div class="modal-sheet">
+<h2 id="detailsTitle" style="word-break:break-all;">Bilddetails</h2>
+<div id="detailsBody"></div>
+<button type="button" class="btn" style="width:100%;" onclick="closeDetails()">Schliessen</button>
+</div>
+</div>
+
+<script>
+// ============ Bilddetails (EXIF) ============
+function showDetails(fileId) {
+const overlay = document.getElementById('detailsOverlay');
+const body = document.getElementById('detailsBody');
+document.getElementById('detailsTitle').textContent = 'Bilddetails';
+body.innerHTML = '<p class="exif-hint">Lade Aufnahmedaten ...</p>';
+overlay.classList.add('visible');
+fetch('/exif/' + fileId)
+.then(r => {
+if (r.redirected && r.url.indexOf('/login') !== -1) { window.location.href = '/login'; throw new Error('Sitzung abgelaufen'); }
+return r.json().then(j => { if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status)); return j; });
+})
+.then(data => {
+document.getElementById('detailsTitle').textContent = data.name || 'Bilddetails';
+body.innerHTML = '';
+if (data.felder && data.felder.length) {
+const dl = document.createElement('dl');
+dl.className = 'exif-list';
+data.felder.forEach(([label, value]) => {
+const dt = document.createElement('dt'); dt.textContent = label;
+const dd = document.createElement('dd');
+if (label === 'Ort' && data.gps) {
+const a = document.createElement('a');
+a.href = 'https://www.openstreetmap.org/?mlat=' + data.gps.lat + '&mlon=' + data.gps.lon + '#map=15/' + data.gps.lat + '/' + data.gps.lon;
+a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = value + ' \u2197';
+dd.appendChild(a);
+} else {
+dd.textContent = value;
+}
+dl.append(dt, dd);
+});
+body.appendChild(dl);
+}
+if (data.hinweis) {
+const p = document.createElement('p'); p.className = 'exif-hint'; p.textContent = data.hinweis; body.appendChild(p);
+}
+})
+.catch(err => {
+body.innerHTML = '';
+const p = document.createElement('p'); p.className = 'exif-hint';
+p.textContent = 'Aufnahmedaten konnten nicht geladen werden (' + err.message + ').';
+body.appendChild(p);
+});
+}
+
+function closeDetails() {
+document.getElementById('detailsOverlay').classList.remove('visible');
+}
+
+// ============ Mehrfachauswahl & Verschieben ============
+function updateBulkBar() {
+const checked = document.querySelectorAll('.item-checkbox:checked');
+const bar = document.getElementById('bulkBar');
+const count = document.getElementById('bulkCount');
+if (checked.length > 0) {
+bar.classList.add('visible');
+count.textContent = checked.length + ' ausgewählt';
+} else {
+bar.classList.remove('visible');
+}
+}
+
+function openMoveSheet() {
+const checked = document.querySelectorAll('.item-checkbox:checked');
+if (checked.length === 0) return;
+document.getElementById('moveOverlay').classList.add('visible');
+const list = document.getElementById('moveTargetList');
+list.innerHTML = '<div class="move-target-row">Lade Ordner...</div>';
+
+fetch('/folder_tree_json')
+.then(r => r.json())
+.then(folders => {
+list.innerHTML = '';
+const rootRow = document.createElement('div');
+rootRow.className = 'move-target-row';
+rootRow.textContent = '/ (Hauptverzeichnis)';
+rootRow.onclick = () => selectMoveTarget('root');
+list.appendChild(rootRow);
+folders.forEach(f => {
+const row = document.createElement('div');
+row.className = 'move-target-row';
+row.style.paddingLeft = (12 + f.depth * 18) + 'px';
+row.textContent = '\u{1F4C1} ' + f.name;
+row.onclick = () => selectMoveTarget(f.id);
+list.appendChild(row);
+});
+})
+.catch(() => {
+list.innerHTML = '<div class="move-target-row">Ordner konnten nicht geladen werden.</div>';
+});
+}
+
+function closeMoveSheet() {
+document.getElementById('moveOverlay').classList.remove('visible');
+}
+
+function selectMoveTarget(targetValue) {
+document.getElementById('targetFolderIdField').value = targetValue;
+const form = document.getElementById('bulkForm');
+form.action = '/bulk_move';
+form.submit();
+}
+</script>
+
+</body>
+</html>

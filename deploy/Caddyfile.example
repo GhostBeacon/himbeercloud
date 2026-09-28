@@ -1,0 +1,7 @@
+# Caddy als Reverse Proxy mit automatischem HTTPS (Let's Encrypt).
+# Vorlage fuer /etc/caddy/Caddyfile - "cloud.example.org" durch die eigene Domain ersetzen.
+# Voraussetzung: DNS-Eintrag zeigt auf den Anschluss, Router leitet Port 80 und 443 an den Pi.
+
+cloud.example.org {
+	reverse_proxy 127.0.0.1:5000
+}

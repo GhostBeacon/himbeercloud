@@ -1,0 +1,85 @@
+<div class="breadcrumb">
+<a href="/" class="nav-link">&#x2190; Zurück zur Cloud</a>
+</div>
+
+{% if files or folders %}
+<div class="empty-trash-bar">
+<button type="button" class="btn-danger-outline" onclick="openEmptyTrashModal()">Papierkorb endgültig leeren</button>
+</div>
+{% endif %}
+
+<div class="card">
+<h2>Ordner</h2>
+<ul>
+{% for folder in folders %}
+<li>
+<div class="item-info">
+<span>&#x1F4C1;</span>
+<span class="item-name">{{ folder.name }}</span>
+<span class="days-left {% if folder.days_left <= 7 %}warning{% endif %}">noch {{ folder.days_left }} Tage</span>
+</div>
+<div class="btn-group">
+<form action="/restore_folder/{{ folder.id }}" method="post" class="ajax-form" style="display:inline;">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button type="submit" class="btn-restore">Wiederherstellen</button>
+</form>
+<form action="/delete_permanently/folder/{{ folder.id }}" method="post" class="ajax-form" style="display:inline;"
+      onsubmit="return confirm('Ordner endgültig und unwiderruflich löschen?');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button type="submit" class="btn-danger">Endgültig löschen</button>
+</form>
+</div>
+</li>
+{% else %}
+<li class="empty">Keine gelöschten Ordner.</li>
+{% endfor %}
+</ul>
+</div>
+
+<div class="card">
+<h2>Dateien</h2>
+<ul>
+{% for file in files %}
+<li>
+<div class="item-info">
+<span>&#x1F4C4;</span>
+<span class="item-name">{{ file.original_name }}</span>
+<span class="days-left {% if file.days_left <= 7 %}warning{% endif %}">noch {{ file.days_left }} Tage</span>
+</div>
+<div class="btn-group">
+<form action="/restore_file/{{ file.id }}" method="post" class="ajax-form" style="display:inline;">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button type="submit" class="btn-restore">Wiederherstellen</button>
+</form>
+<form action="/delete_permanently/file/{{ file.id }}" method="post" class="ajax-form" style="display:inline;"
+      onsubmit="return confirm('Datei endgültig und unwiderruflich löschen?');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button type="submit" class="btn-danger">Endgültig löschen</button>
+</form>
+</div>
+</li>
+{% else %}
+<li class="empty">Keine gelöschten Dateien.</li>
+{% endfor %}
+</ul>
+</div>
+
+<!-- Strikter Bestätigungsdialog: erst Tipp-Bestaetigung nötig, bevor der Button aktiv wird -->
+<div class="modal-overlay" id="emptyTrashModal" onclick="closeEmptyTrashModal(event)">
+<div class="confirm-dialog" onclick="event.stopPropagation()">
+<h3>&#x26A0;&#xFE0F; Papierkorb endgültig leeren?</h3>
+<p>
+Dies löscht <strong>{{ files|length }} Datei(en)</strong> und <strong>{{ folders|length }} Ordner</strong>
+unwiderruflich von der Festplatte. Dieser Vorgang kann <strong>nicht rückgängig</strong> gemacht werden.
+</p>
+<p>Tippe <span class="confirm-dialog-word">LOESCHEN</span> ein, um zu bestätigen:</p>
+<form id="emptyTrashForm" action="/trash/empty" method="post" class="ajax-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="text" id="emptyTrashConfirmInput" oninput="checkEmptyTrashConfirm()" autocomplete="off" placeholder="LOESCHEN">
+<div class="confirm-dialog-buttons">
+<button type="button" onclick="closeEmptyTrashModal()">Abbrechen</button>
+<button type="submit" id="emptyTrashConfirmBtn" class="btn-danger-solid" disabled>Endgültig löschen</button>
+</div>
+</form>
+</div>
+</div>

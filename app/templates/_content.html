@@ -1,0 +1,191 @@
+<!-- Navigation / Brotkrumen -->
+<div class="breadcrumb">
+<span>Pfad:</span>
+<a href="/" class="nav-link">Hauptverzeichnis</a>
+{% for crumb in breadcrumb_path %}
+<span style="color: var(--border-strong);">/</span>
+{% if not loop.last %}
+<a href="/folder/{{ crumb.id }}" class="nav-link">{{ crumb.name }}</a>
+{% else %}
+<strong>{{ crumb.name }}</strong>
+{% endif %}
+{% endfor %}
+</div>
+
+<!-- Aktionsbereich (Upload & Ordner erstellen) -->
+<div class="actions-bar">
+<div class="card actions-card">
+<h3>Hochladen</h3>
+<label class="dropzone" for="fileInput" id="dropzone">
+<span id="dropzoneText">&#x1F4C2; Dateien oder ganze Ordner<br>hierher ziehen</span>
+</label>
+<div class="dropzone-buttons">
+<label class="btn-primary upload-label-btn" id="chooseFilesBtn" for="fileInput">Dateien wählen</label>
+<label class="upload-label-btn" id="chooseMediaBtn" for="mediaInput">&#x1F5BC;&#xFE0F; Fotos/Videos</label>
+<label class="upload-label-btn" id="chooseFolderBtn" for="folderInput">Ordner wählen</label>
+</div>
+<input type="file" id="fileInput" multiple class="visually-hidden-file-input">
+<input type="file" id="mediaInput" accept="image/*,video/*" multiple class="visually-hidden-file-input">
+<input type="file" id="folderInput" webkitdirectory mozdirectory multiple class="visually-hidden-file-input">
+
+<label class="extract-zip-label">
+<input type="checkbox" id="extractZipCheckbox">
+ZIP-Dateien automatisch entpacken
+</label>
+</div>
+
+<div class="card actions-card">
+<h3>Neuen Ordner erstellen</h3>
+<form action="/create_folder" method="post" class="ajax-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<input type="hidden" name="parent_id" value="{{ current_folder.id if current_folder else '' }}">
+<input type="text" name="folder_name" placeholder="Ordnername" required style="margin-bottom:12px; width:100%;">
+<button type="submit" class="btn-primary">Ordner anlegen</button>
+</form>
+</div>
+</div>
+
+<!-- Ordner- & Dateiliste -->
+<div class="card content-card">
+<h2>Inhalte</h2>
+
+<div class="list-toolbar">
+<label class="select-all-label">
+<input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+Alle auswählen
+</label>
+
+<div class="search-box">
+<input type="search" id="searchInput" class="search-input" placeholder="&#x1F50D; Alle Dateien durchsuchen"
+       value="{{ search.q if search else '' }}" autocomplete="off" spellcheck="false" aria-label="Alle Dateien und Ordner durchsuchen"
+       oninput="onSearchInput(this.value)" onkeydown="if (event.key === 'Escape') { clearSearch(); }">
+</div>
+
+<div class="view-toggle">
+<button type="button" class="view-toggle-btn" id="viewListBtn" onclick="setViewMode('list')" title="Listenansicht">&#x2630;</button>
+<button type="button" class="view-toggle-btn" id="viewGalleryBtn" onclick="setViewMode('gallery')" title="Galerieansicht">&#x25A6;</button>
+</div>
+
+<select class="sort-select" onchange="changeSort(this.value)">
+<option value="name_asc" {% if pagination.sort == 'name_asc' %}selected{% endif %}>Name (A-Z)</option>
+<option value="name_desc" {% if pagination.sort == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+<option value="date_desc" {% if pagination.sort == 'date_desc' %}selected{% endif %}>Datum (neueste zuerst)</option>
+<option value="date_asc" {% if pagination.sort == 'date_asc' %}selected{% endif %}>Datum (älteste zuerst)</option>
+<option value="type_asc" {% if pagination.sort == 'type_asc' %}selected{% endif %}>Dateiformat (A-Z)</option>
+<option value="type_desc" {% if pagination.sort == 'type_desc' %}selected{% endif %}>Dateiformat (Z-A)</option>
+<option value="size_desc" {% if pagination.sort == 'size_desc' %}selected{% endif %}>Größe (größte zuerst)</option>
+<option value="size_asc" {% if pagination.sort == 'size_asc' %}selected{% endif %}>Größe (kleinste zuerst)</option>
+</select>
+
+<div class="bulk-actions-bar" id="bulkActionsBar" style="display:none;">
+<span class="bulk-selected-count" id="bulkSelectedCount">0 ausgewählt</span>
+<button type="button" class="btn" onclick="openMoveDialog('bulk')">Verschieben</button>
+<button type="button" class="btn-danger" onclick="performBulkDelete()">Löschen</button>
+<button type="button" class="btn-download" onclick="performBulkDownload()">Download</button>
+</div>
+</div>
+
+{% if search %}
+<div class="search-banner">
+<span>Suche nach <strong>&bdquo;{{ search.q }}&ldquo;</strong> im gesamten Speicher:
+{{ search.total_files }} Datei{{ '' if search.total_files == 1 else 'en' }}{% if search.total_folders %}, {{ search.total_folders }} Ordner{% endif %}</span>
+<button type="button" class="btn" onclick="clearSearch()">Suche beenden</button>
+</div>
+{% endif %}
+
+<ul class="content-list" id="contentList">
+<!-- ORDNER ANZEIGEN -->
+{% for folder in folders %}
+<li>
+
+<div class="file-info">
+<input type="checkbox" class="item-checkbox" data-type="folder" data-id="{{ folder.id }}" onchange="updateSelectionState()">
+<span class="file-icon">&#x1F4C1;</span>
+<a href="/folder/{{ folder.id }}" class="item-name nav-link" id="itemNameDisplay-folder-{{ folder.id }}">{{ folder.name }}</a>
+<input type="text" class="rename-input" id="itemNameInput-folder-{{ folder.id }}" value="{{ folder.name }}" style="display:none;"
+       onkeydown="handleRenameKeydown(event,'folder',{{ folder.id }})" onblur="submitRename('folder',{{ folder.id }})">
+<button type="button" class="rename-btn" onclick="startRename('folder', {{ folder.id }})" title="Umbenennen">&#x270F;&#xFE0F;</button>
+{% if search %}<a href="{{ '/folder/%d' % folder.location_id if folder.location_id else '/' }}" class="nav-link search-location" title="Ordner öffnen, in dem der Treffer liegt">in {{ folder.location }}</a>{% endif %}
+<span class="file-size">
+{% if folder.size_mb >= 1024 %}
+({{ (folder.size_mb / 1024) | round(2) }} GB)
+{% else %}
+({{ folder.size_mb }} MB)
+{% endif %}
+</span>
+</div>
+<div class="btn-group">
+<form action="/delete_folder/{{ folder.id }}" method="post" class="ajax-form" onsubmit="return confirm('Ordner und gesamten Inhalt in den Papierkorb verschieben?');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button type="submit" class="btn-danger">Ordner löschen</button>
+</form>
+</div>
+</li>
+{% endfor %}
+
+<!-- DATEIEN ANZEIGEN -->
+{% for file in files %}
+{% set ext = file.original_name.split('.')[-1].lower() %}
+<li>
+<div class="file-info">
+<input type="checkbox" class="item-checkbox" data-type="file" data-id="{{ file.id }}" onchange="updateSelectionState()">
+{% if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'cr3', 'cr2', 'heic', 'heif', 'pdf'] %}
+<img src="/thumbnail/{{ file.id }}"
+alt="Vorschau"
+class="thumb-img"
+loading="lazy"
+{% if ext == 'pdf' %}
+onclick="window.open('/preview/{{ file.id }}', '_blank')"
+{% else %}
+data-file-id="{{ file.id }}"
+data-preview-url="/preview/{{ file.id }}"
+onclick="openImageByFileId({{ file.id }})"
+{% endif %}>
+{% elif ext in ['mp4', 'webm', 'mov', 'mkv'] %}
+<span class="file-icon">&#x1F3A5;</span>
+{% else %}
+<span class="file-icon">&#x1F4C4;</span>
+{% endif %}
+
+<span class="item-name" id="itemNameDisplay-file-{{ file.id }}">{{ file.original_name }}</span>
+<input type="text" class="rename-input" id="itemNameInput-file-{{ file.id }}" value="{{ file.original_name }}" style="display:none;"
+       onkeydown="handleRenameKeydown(event,'file',{{ file.id }})" onblur="submitRename('file',{{ file.id }})">
+<button type="button" class="rename-btn" onclick="startRename('file', {{ file.id }})" title="Umbenennen">&#x270F;&#xFE0F;</button>
+{% if search %}<a href="{{ '/folder/%d' % file.location_id if file.location_id else '/' }}" class="nav-link search-location" title="Ordner öffnen, in dem die Datei liegt">in {{ file.location }}</a>{% endif %}
+<span class="file-size">({{ file.size_mb }} MB)</span>
+</div>
+
+<div class="btn-group">
+{% if ext in ['jpg', 'jpeg', 'png', 'gif', 'webp', 'cr3', 'cr2', 'heic', 'heif'] %}
+<button class="btn btn-preview" onclick="openImageByFileId({{ file.id }})">Ansehen</button>
+{% elif ext == 'pdf' %}
+<a href="/preview/{{ file.id }}" target="_blank" class="btn btn-preview">PDF Öffnen</a>
+{% elif ext in ['mp4', 'webm', 'mov'] %}
+<button class="btn btn-preview" onclick="openMedia('/preview/{{ file.id }}', 'video')">Abspielen</button>
+{% endif %}
+
+<a href="/download/{{ file.id }}" class="btn btn-download">Download</a>
+
+<button type="button" class="btn" onclick="openMoveDialog('file', {{ file.id }})">Verschieben</button>
+
+<form action="/delete_file/{{ file.id }}" method="post" class="ajax-form" onsubmit="return confirm('Datei in den Papierkorb verschieben?');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button type="submit" class="btn-danger">Löschen</button>
+</form>
+</div>
+</li>
+{% endfor %}
+
+{% if not folders and not files %}
+<li style="color: var(--text-faint); font-style: italic;">{% if search %}Keine Treffer für &bdquo;{{ search.q }}&ldquo;.{% else %}Dieser Ordner ist leer.{% endif %}</li>
+{% endif %}
+</ul>
+
+{% if pagination.total_pages > 1 %}
+<div class="pagination-bar">
+<button type="button" class="btn" onclick="changePage({{ pagination.page - 1 }})" {% if not pagination.has_prev %}disabled{% endif %}>&#x2039; Zurück</button>
+<span class="pagination-info">Seite {{ pagination.page }} von {{ pagination.total_pages }} ({{ pagination.total_files }} Dateien)</span>
+<button type="button" class="btn" onclick="changePage({{ pagination.page + 1 }})" {% if not pagination.has_next %}disabled{% endif %}>Weiter &#x203A;</button>
+</div>
+{% endif %}
+</div>

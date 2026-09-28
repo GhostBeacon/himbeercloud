@@ -1,0 +1,25 @@
+[Unit]
+Description=RaspiCloud (Gunicorn/Flask)
+After=network.target local-fs.target
+
+[Service]
+User=raspicloud
+Group=raspicloud
+# video: Zugriff auf vcgencmd (Spannung, Drosselung, Leistung)
+SupplementaryGroups=video
+EnvironmentFile=/etc/raspicloud/raspicloud.env
+# Grosse Uploads im Datenordner zwischenspeichern (mit Speicher-Festplatte: auf der Platte, nicht in RAM/SD)
+Environment=TMPDIR=/srv/raspicloud/tmp_uploads
+WorkingDirectory=/opt/raspicloud/app
+ExecStart=/opt/raspicloud/venv/bin/gunicorn --workers 2 --threads 4 --worker-class gthread --timeout 1800 --bind 127.0.0.1:5000 app:app
+Restart=always
+
+# Absicherung: der Dienst darf nur in Datenbank- und Datenordner schreiben
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/raspicloud /srv/raspicloud
+
+[Install]
+WantedBy=multi-user.target
