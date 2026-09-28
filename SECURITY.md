@@ -6,7 +6,7 @@ Bitte Sicherheitslücken **nicht** als öffentliches Issue melden, sondern über
 
 ## Was nie ins Repository gehört
 
-- `/etc/raspicloud/raspicloud.env` (enthält `SECRET_KEY` und ggf. das ntfy-Topic)
+- `/etc/himbeerepi/himbeerepi.env` (enthält `SECRET_KEY` und ggf. das ntfy-Topic)
 - Datenbanken (`*.db`) und Sicherungen
 - echte Domains, IP-Adressen, Benutzernamen
 

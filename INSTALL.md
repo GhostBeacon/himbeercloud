@@ -1,6 +1,6 @@
 # Installationsanleitung
 
-Diese Anleitung führt Schritt für Schritt von einem leeren Raspberry Pi zu einer laufenden RaspiCloud. Du brauchst keine Linux-Vorkenntnisse, nur die Bereitschaft, Befehle abzutippen.
+Diese Anleitung führt Schritt für Schritt von einem leeren Raspberry Pi zu einer laufenden HimbeerePi. Du brauchst keine Linux-Vorkenntnisse, nur die Bereitschaft, Befehle abzutippen.
 
 Die Einrichtung geht **in Stufen**. Du kannst klein anfangen und später ausbauen, ohne neu zu installieren:
 
@@ -16,7 +16,7 @@ Die Einrichtung geht **in Stufen**. Du kannst klein anfangen und später ausbaue
 
 - **Vorbereitung:** [1. Was du brauchst](#1-was-du-brauchst) · [2. Raspberry Pi OS installieren](#2-raspberry-pi-os-installieren) · [3. Per SSH verbinden](#3-per-ssh-verbinden)
 - **[Einrichtungsassistent (empfohlen)](#einrichtungsassistent-empfohlen)** – führt mit Menüs durch alle Stufen
-- **Grundeinrichtung von Hand:** [4. Installieren](#4-raspicloud-installieren) · [5. Erster Benutzer](#5-ersten-benutzer-anlegen) · [6. Im Heimnetz testen](#6-im-heimnetz-testen-optional) · [7. Domain](#7-domain-einrichten) · [8. Router](#8-router-ports-freigeben) · [9. HTTPS mit Caddy](#9-https-mit-caddy) · [10. Firewall](#10-firewall) · [11. Zwei-Faktor-Anmeldung](#11-zwei-faktor-anmeldung-einrichten)
+- **Grundeinrichtung von Hand:** [4. Installieren](#4-himbeerepi-installieren) · [5. Erster Benutzer](#5-ersten-benutzer-anlegen) · [6. Im Heimnetz testen](#6-im-heimnetz-testen-optional) · [7. Domain](#7-domain-einrichten) · [8. Router](#8-router-ports-freigeben) · [9. HTTPS mit Caddy](#9-https-mit-caddy) · [10. Firewall](#10-firewall) · [11. Zwei-Faktor-Anmeldung](#11-zwei-faktor-anmeldung-einrichten)
 - **Ausbau von Hand:** [12. Ausbau 1: Speicher-Festplatte](#12-ausbau-1-speicher-festplatte) · [13. Ausbau 2: Backup-Festplatte](#13-ausbau-2-backup-festplatte)
 - **Betrieb:** [14. Datensicherung und Wiederherstellung](#14-datensicherung-und-wiederherstellung) · [15. Aktualisieren](#15-aktualisieren) · [16. Fehlerbehebung](#16-fehlerbehebung)
 
@@ -47,7 +47,7 @@ In den Befehlen steht `<so etwas>` für einen Wert, den du selbst einsetzt, ohne
    - *Betriebssystem*: **Raspberry Pi OS (other) → Raspberry Pi OS Lite (64-bit)** (ohne Desktop, spart Speicher)
    - *SD-Karte*: deine microSD-Karte
 3. Auf **Weiter → Einstellungen bearbeiten** klicken und festlegen:
-   - *Hostname*: z. B. `raspicloud`
+   - *Hostname*: z. B. `himbeerepi`
    - *Benutzername und Passwort*: frei wählen, gut merken
    - *WLAN*: nur falls kein Kabel
    - *Gebietsschema*: Zeitzone `Europe/Berlin`, Tastatur `de`
@@ -63,10 +63,10 @@ Nach 1–2 Minuten ist der Pi im Netz.
 Auf deinem Rechner ein Terminal öffnen (Windows: *PowerShell*, macOS: *Terminal*):
 
 ```bash
-ssh <benutzername>@raspicloud.local
+ssh <benutzername>@himbeerepi.local
 ```
 
-Die Frage nach dem Fingerabdruck mit `yes` bestätigen, dann das Passwort eingeben. Klappt `raspicloud.local` nicht, im Router (Liste der verbundenen Geräte) die IP-Adresse des Pi nachsehen und `ssh <benutzername>@<ip-adresse>` verwenden.
+Die Frage nach dem Fingerabdruck mit `yes` bestätigen, dann das Passwort eingeben. Klappt `himbeerepi.local` nicht, im Router (Liste der verbundenen Geräte) die IP-Adresse des Pi nachsehen und `ssh <benutzername>@<ip-adresse>` verwenden.
 
 Zuerst das System aktualisieren:
 
@@ -87,54 +87,54 @@ Ein Assistent führt dich mit Menüs durch alle Stufen:
 
 ```bash
 sudo apt install -y git
-sudo git clone https://github.com/GhostBeacon/raspicloud.git /opt/raspicloud
-sudo /opt/raspicloud/deploy/setup.sh
+sudo git clone https://github.com/GhostBeacon/himbeercloud.git /opt/himbeerepi
+sudo /opt/himbeerepi/deploy/setup.sh
 ```
 
 Bedienung mit Pfeiltasten, Tab und Enter; Esc bricht den aktuellen Schritt ab.
 
 | Menüpunkt | Was passiert |
 |---|---|
-| **Grundeinrichtung** | installiert RaspiCloud (Dateien auf der SD-Karte), legt dein Konto und auf Wunsch weitere an, richtet den **Zugang** ein – **Domain mit HTTPS** (prüft den DNS-Eintrag, erinnert an die Portfreigabe, richtet Caddy ein und wartet auf das Zertifikat) oder **nur im Heimnetz** unter `http://<ip-des-pi>` – sowie die **Firewall** (SSH nur aus dem Heimnetz und von deiner aktuellen Verbindung, damit du dich nicht aussperrst). Optional: Push-Meldungen und Strompreis |
+| **Grundeinrichtung** | installiert HimbeerePi (Dateien auf der SD-Karte), legt dein Konto und auf Wunsch weitere an, richtet den **Zugang** ein – **Domain mit HTTPS** (prüft den DNS-Eintrag, erinnert an die Portfreigabe, richtet Caddy ein und wartet auf das Zertifikat) oder **nur im Heimnetz** unter `http://<ip-des-pi>` – sowie die **Firewall** (SSH nur aus dem Heimnetz und von deiner aktuellen Verbindung, damit du dich nicht aussperrst). Optional: Push-Meldungen und Strompreis |
 | **Ausbau 1: Festplatte als Speicher** | zeigt die angeschlossenen Platten (nie die SD-Karte), formatiert auf Wunsch – nur nach Eintippen des Plattennamens – oder nimmt eine vorhandene ext4-Platte. Dann **zieht er alle Dateien um**: Cloud kurz anhalten, auf die Platte kopieren, mit Prüfsummen vergleichen, Platte an derselben Stelle einhängen, Cloud starten. Geht dabei etwas schief, wird alles automatisch zurückgenommen. Die alte Kopie auf der SD-Karte bleibt, bis du sie löschst |
 | **Ausbau 2: zweite Festplatte als Backup** | richtet die Backup-Platte ein: jede Nacht eine Kopie der Datenbank, jeden Sonntag eine Spiegelung aller Dateien. Die Speicher-Platte kann dabei nicht versehentlich ausgewählt werden |
 
 Zwei Dinge musst du für den Zugang von unterwegs weiterhin selbst erledigen; der Assistent sagt dir, wann, und prüft sie: den **DNS-Eintrag** bei deinem Domain- oder DynDNS-Anbieter ([Schritt 7](#7-domain-einrichten)) und die **Portfreigabe im Router** ([Schritt 8](#8-router-ports-freigeben)).
 
-Du kannst den Assistenten **jederzeit erneut starten**, um auszubauen oder etwas zu ändern (z. B. von „Heimnetz“ auf „Domain“ umzustellen oder Benutzer hinzuzufügen). Unter „Übersicht“ zeigt er den aktuellen Stand. Protokoll: `/var/log/raspicloud-setup.log`.
+Du kannst den Assistenten **jederzeit erneut starten**, um auszubauen oder etwas zu ändern (z. B. von „Heimnetz“ auf „Domain“ umzustellen oder Benutzer hinzuzufügen). Unter „Übersicht“ zeigt er den aktuellen Stand. Protokoll: `/var/log/himbeerepi-setup.log`.
 
 Danach nur noch: [Zwei-Faktor-Anmeldung einrichten](#11-zwei-faktor-anmeldung-einrichten). Die folgenden Abschnitte beschreiben alles noch einmal von Hand und helfen bei der [Fehlerbehebung](#16-fehlerbehebung).
 
 ---
 
-## 4. RaspiCloud installieren
+## 4. HimbeerePi installieren
 
 ```bash
 sudo apt install -y git
-sudo git clone https://github.com/GhostBeacon/raspicloud.git /opt/raspicloud
-sudo /opt/raspicloud/deploy/install.sh
+sudo git clone https://github.com/GhostBeacon/himbeercloud.git /opt/himbeerepi
+sudo /opt/himbeerepi/deploy/install.sh
 ```
 
 Das Skript läuft ein paar Minuten und erledigt:
 
 - benötigte Pakete (Python, SQLite, Werkzeuge für PDF-, RAW- und EXIF-Vorschauen)
-- den Dienstbenutzer `raspicloud` ohne Login-Shell
-- die Einstellungsdatei `/etc/raspicloud/raspicloud.env` mit einem zufälligen geheimen Schlüssel
-- die Python-Umgebung unter `/opt/raspicloud/venv`
-- die Datenbank unter `/var/lib/raspicloud/users.db`
-- den Datenordner `/srv/raspicloud` (zunächst auf der SD-Karte)
-- den systemd-Dienst `raspicloud` (startet automatisch beim Hochfahren)
+- den Dienstbenutzer `himbeerepi` ohne Login-Shell
+- die Einstellungsdatei `/etc/himbeerepi/himbeerepi.env` mit einem zufälligen geheimen Schlüssel
+- die Python-Umgebung unter `/opt/himbeerepi/venv`
+- die Datenbank unter `/var/lib/himbeerepi/users.db`
+- den Datenordner `/srv/himbeerepi` (zunächst auf der SD-Karte)
+- den systemd-Dienst `himbeerepi` (startet automatisch beim Hochfahren)
 - die Cronjobs: tägliches Datenbank-Backup, Stromschätzung, Gesundheitsprüfung
 
-Am Ende sollte stehen: `Fertig: RaspiCloud laeuft auf 127.0.0.1:5000`.
+Am Ende sollte stehen: `Fertig: HimbeerePi laeuft auf 127.0.0.1:5000`.
 
 ---
 
 ## 5. Ersten Benutzer anlegen
 
 ```bash
-cd /opt/raspicloud/app
-sudo -u raspicloud ../venv/bin/python3 manage.py add-user
+cd /opt/himbeerepi/app
+sudo -u himbeerepi ../venv/bin/python3 manage.py add-user
 ```
 
 Abgefragt werden:
@@ -156,17 +156,17 @@ Weitere Benutzer legst du genauso an. Übersicht: `manage.py list-users`.
 Die Cloud hört aus Sicherheitsgründen nur auf den Pi selbst (`127.0.0.1`). Zum kurzen Testen ohne Domain kannst du sie von deinem Rechner aus über SSH „durchreichen“:
 
 ```bash
-ssh -L 5000:127.0.0.1:5000 <benutzername>@raspicloud.local
+ssh -L 5000:127.0.0.1:5000 <benutzername>@himbeerepi.local
 ```
 
 Solange diese Verbindung offen ist, öffnet `http://localhost:5000` die Cloud. Springt die Anmeldung dabei immer wieder zum Login zurück (weil das kein HTTPS ist), hilft vorübergehend ein Test-Schalter:
 
 ```bash
-echo 'RASPICLOUD_INSECURE_COOKIE=1' | sudo tee -a /etc/raspicloud/raspicloud.env
-sudo systemctl restart raspicloud
+echo 'HIMBEEREPI_INSECURE_COOKIE=1' | sudo tee -a /etc/himbeerepi/himbeerepi.env
+sudo systemctl restart himbeerepi
 ```
 
-> **Wichtig:** Diese Zeile nach dem Test wieder aus `/etc/raspicloud/raspicloud.env` löschen (`sudo nano /etc/raspicloud/raspicloud.env`) und den Dienst neu starten, bevor die Cloud von außen erreichbar ist.
+> **Wichtig:** Diese Zeile nach dem Test wieder aus `/etc/himbeerepi/himbeerepi.env` löschen (`sudo nano /etc/himbeerepi/himbeerepi.env`) und den Dienst neu starten, bevor die Cloud von außen erreichbar ist.
 
 Dauerhaft nur im Heimnetz (ohne Domain, ohne Verschlüsselung) richtet der [Einrichtungsassistent](#einrichtungsassistent-empfohlen) unter „Zugang → Nur im Heimnetz“ ein.
 
@@ -212,7 +212,7 @@ Bei der FRITZ!Box: *Internet → Freigaben → Portfreigaben → Gerät für Fre
 
 ```bash
 sudo apt install -y caddy
-sudo cp /opt/raspicloud/deploy/Caddyfile.example /etc/caddy/Caddyfile
+sudo cp /opt/himbeerepi/deploy/Caddyfile.example /etc/caddy/Caddyfile
 sudo nano /etc/caddy/Caddyfile
 ```
 
@@ -257,8 +257,8 @@ Ab jetzt fragt die Cloud nach dem Passwort zusätzlich nach dem Code.
 **Handy verloren?** Auf dem Pi:
 
 ```bash
-cd /opt/raspicloud/app
-sudo -u raspicloud ../venv/bin/python3 emergency_disable_2fa.py
+cd /opt/himbeerepi/app
+sudo -u himbeerepi ../venv/bin/python3 emergency_disable_2fa.py
 ```
 
 Damit ist die **Grundeinrichtung** fertig.
@@ -267,7 +267,7 @@ Damit ist die **Grundeinrichtung** fertig.
 
 ## 12. Ausbau 1: Speicher-Festplatte
 
-Die Dateien ziehen von der SD-Karte auf eine Festplatte um. Der Pfad `/srv/raspicloud` bleibt gleich – die Platte wird genau dort eingehängt, sodass keine Einstellung geändert werden muss. **Am einfachsten und sichersten mit dem Assistenten** (`sudo /opt/raspicloud/deploy/setup.sh` → „Ausbau 1“): Er prüft Platz und Kopie und nimmt bei Problemen alles automatisch zurück.
+Die Dateien ziehen von der SD-Karte auf eine Festplatte um. Der Pfad `/srv/himbeerepi` bleibt gleich – die Platte wird genau dort eingehängt, sodass keine Einstellung geändert werden muss. **Am einfachsten und sichersten mit dem Assistenten** (`sudo /opt/himbeerepi/deploy/setup.sh` → „Ausbau 1“): Er prüft Platz und Kopie und nimmt bei Problemen alles automatisch zurück.
 
 Von Hand:
 
@@ -278,38 +278,38 @@ Von Hand:
 ```bash
 lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,MODEL
 sudo apt install -y parted rsync
-sudo parted /dev/sda --script mklabel gpt mkpart raspicloud ext4 0% 100%
-sudo mkfs.ext4 -L raspicloud /dev/sda1
+sudo parted /dev/sda --script mklabel gpt mkpart himbeerepi ext4 0% 100%
+sudo mkfs.ext4 -L himbeerepi /dev/sda1
 ```
 
 **2. Dateien kopieren und prüfen** (Cloud dafür anhalten):
 
 ```bash
-sudo systemctl stop raspicloud
-sudo mkdir -p /mnt/raspicloud-umzug
-sudo mount /dev/sda1 /mnt/raspicloud-umzug
-sudo rsync -aHAX /srv/raspicloud/ /mnt/raspicloud-umzug/
-sudo rsync -a --checksum --dry-run --itemize-changes /srv/raspicloud/ /mnt/raspicloud-umzug/   # darf nichts ausgeben
-sudo umount /mnt/raspicloud-umzug
+sudo systemctl stop himbeerepi
+sudo mkdir -p /mnt/himbeerepi-umzug
+sudo mount /dev/sda1 /mnt/himbeerepi-umzug
+sudo rsync -aHAX /srv/himbeerepi/ /mnt/himbeerepi-umzug/
+sudo rsync -a --checksum --dry-run --itemize-changes /srv/himbeerepi/ /mnt/himbeerepi-umzug/   # darf nichts ausgeben
+sudo umount /mnt/himbeerepi-umzug
 ```
 
 **3. Umschalten:** alten Ordner beiseitelegen, Platte an seiner Stelle dauerhaft einhängen:
 
 ```bash
-sudo mv /srv/raspicloud /srv/raspicloud.sd-kopie
-sudo mkdir /srv/raspicloud
+sudo mv /srv/himbeerepi /srv/himbeerepi.sd-kopie
+sudo mkdir /srv/himbeerepi
 sudo blkid /dev/sda1                 # zeigt UUID="…", diese Zeichenkette kopieren
-echo 'UUID=<die-uuid>  /srv/raspicloud  ext4  defaults,nofail  0  2' | sudo tee -a /etc/fstab
+echo 'UUID=<die-uuid>  /srv/himbeerepi  ext4  defaults,nofail  0  2' | sudo tee -a /etc/fstab
 sudo systemctl daemon-reload
-sudo mount /srv/raspicloud
-sudo chown raspicloud:raspicloud /srv/raspicloud
-echo 'RASPICLOUD_HDD_WATTS=7' | sudo tee -a /etc/raspicloud/raspicloud.env     # für die Stromschätzung
-sudo systemctl start raspicloud
+sudo mount /srv/himbeerepi
+sudo chown himbeerepi:himbeerepi /srv/himbeerepi
+echo 'HIMBEEREPI_HDD_WATTS=7' | sudo tee -a /etc/himbeerepi/himbeerepi.env     # für die Stromschätzung
+sudo systemctl start himbeerepi
 ```
 
 `nofail` sorgt dafür, dass der Pi auch ohne angeschlossene Platte noch startet.
 
-**4. Prüfen** (Dateien in der Cloud sichtbar, Speicherplatz zeigt die Platte). Wenn alles passt, die alte Kopie löschen: `sudo rm -rf /srv/raspicloud.sd-kopie`.
+**4. Prüfen** (Dateien in der Cloud sichtbar, Speicherplatz zeigt die Platte). Wenn alles passt, die alte Kopie löschen: `sudo rm -rf /srv/himbeerepi.sd-kopie`.
 
 > Eine Platte mit NTFS oder exFAT (von Windows/macOS) kann keine Linux-Rechte speichern und ist langsamer. ext4 verwenden.
 
@@ -317,27 +317,27 @@ sudo systemctl start raspicloud
 
 ## 13. Ausbau 2: Backup-Festplatte
 
-Eine zweite Platte bekommt jede Nacht eine Kopie der Datenbank und jeden Sonntag eine Spiegelung aller Dateien. **Mit dem Assistenten:** `sudo /opt/raspicloud/deploy/setup.sh` → „Ausbau 2“.
+Eine zweite Platte bekommt jede Nacht eine Kopie der Datenbank und jeden Sonntag eine Spiegelung aller Dateien. **Mit dem Assistenten:** `sudo /opt/himbeerepi/deploy/setup.sh` → „Ausbau 2“.
 
-Von Hand (Platte wie in Schritt 12 formatieren, hier `sdb` mit Label `raspicloud-bak`):
+Von Hand (Platte wie in Schritt 12 formatieren, hier `sdb` mit Label `himbeerepi-bak`):
 
 ```bash
-sudo mkdir -p /srv/raspicloud-backup
+sudo mkdir -p /srv/himbeerepi-backup
 sudo blkid /dev/sdb1
-echo 'UUID=<die-uuid>  /srv/raspicloud-backup  ext4  defaults,nofail  0  2' | sudo tee -a /etc/fstab
+echo 'UUID=<die-uuid>  /srv/himbeerepi-backup  ext4  defaults,nofail  0  2' | sudo tee -a /etc/fstab
 sudo systemctl daemon-reload
-sudo mount /srv/raspicloud-backup
-sudo install -d -o raspicloud -g raspicloud /srv/raspicloud-backup/db_backups
-sudo nano /etc/raspicloud/raspicloud.env
-#   RASPICLOUD_BACKUP_MOUNT=/srv/raspicloud-backup   (Raute davor entfernen)
-#   RASPICLOUD_HDD_WATTS=14                          (zwei Platten)
-sudo systemctl restart raspicloud
+sudo mount /srv/himbeerepi-backup
+sudo install -d -o himbeerepi -g himbeerepi /srv/himbeerepi-backup/db_backups
+sudo nano /etc/himbeerepi/himbeerepi.env
+#   HIMBEEREPI_BACKUP_MOUNT=/srv/himbeerepi-backup   (Raute davor entfernen)
+#   HIMBEEREPI_HDD_WATTS=14                          (zwei Platten)
+sudo systemctl restart himbeerepi
 ```
 
 Wöchentliche Spiegelung aller Dateien (sonntags 2 Uhr):
 
 ```bash
-echo '0 2 * * 0 root mountpoint -q /srv/raspicloud-backup && rsync -a --delete --exclude=/lost+found --exclude=/tmp_uploads /srv/raspicloud/ /srv/raspicloud-backup/dateien/' | sudo tee /etc/cron.d/raspicloud-mirror
+echo '0 2 * * 0 root mountpoint -q /srv/himbeerepi-backup && rsync -a --delete --exclude=/lost+found --exclude=/tmp_uploads /srv/himbeerepi/ /srv/himbeerepi-backup/dateien/' | sudo tee /etc/cron.d/himbeerepi-mirror
 ```
 
 Am besten liegt eine weitere Kopie außer Haus, zum Beispiel eine Platte, die du ab und zu tauschst.
@@ -348,32 +348,32 @@ Am besten liegt eine weitere Kopie außer Haus, zum Beispiel eine Platte, die du
 
 | | Grundeinrichtung | + Ausbau 1 | + Ausbau 2 |
 |---|---|---|---|
-| Datenbank (Benutzer, Ordner, Dateiliste) | täglich 3:10 Uhr nach `/srv/raspicloud/backups`, 14 Tage | ebenso, auf der Speicher-Platte | zusätzlich auf der Backup-Platte |
-| Hochgeladene Dateien | **keine Sicherung** | **keine Sicherung** | sonntags gespiegelt nach `/srv/raspicloud-backup/dateien` |
+| Datenbank (Benutzer, Ordner, Dateiliste) | täglich 3:10 Uhr nach `/srv/himbeerepi/backups`, 14 Tage | ebenso, auf der Speicher-Platte | zusätzlich auf der Backup-Platte |
+| Hochgeladene Dateien | **keine Sicherung** | **keine Sicherung** | sonntags gespiegelt nach `/srv/himbeerepi-backup/dateien` |
 
 Jede Datenbank-Sicherung wird auf Fehler geprüft. Den Status siehst du in der Weboberfläche unter *Pi-Status → Backup-Status*.
 
-**Push-Meldung zum Backup (optional):** im Assistenten unter „Push-Meldungen“, oder von Hand: App [ntfy](https://ntfy.sh) installieren, einen zufälligen Kanalnamen abonnieren (z. B. Ausgabe von `openssl rand -hex 16`) und diesen als `NTFY_TOPIC=` in `/etc/raspicloud/raspicloud.env` eintragen.
+**Push-Meldung zum Backup (optional):** im Assistenten unter „Push-Meldungen“, oder von Hand: App [ntfy](https://ntfy.sh) installieren, einen zufälligen Kanalnamen abonnieren (z. B. Ausgabe von `openssl rand -hex 16`) und diesen als `NTFY_TOPIC=` in `/etc/himbeerepi/himbeerepi.env` eintragen.
 
 **Datenbank wiederherstellen:**
 
 ```bash
-sudo systemctl stop raspicloud
-sudo cp /srv/raspicloud/backups/users_db_<datum>.db /var/lib/raspicloud/users.db
-sudo rm -f /var/lib/raspicloud/users.db-wal /var/lib/raspicloud/users.db-shm
-sudo chown raspicloud:raspicloud /var/lib/raspicloud/users.db
-sudo systemctl start raspicloud
+sudo systemctl stop himbeerepi
+sudo cp /srv/himbeerepi/backups/users_db_<datum>.db /var/lib/himbeerepi/users.db
+sudo rm -f /var/lib/himbeerepi/users.db-wal /var/lib/himbeerepi/users.db-shm
+sudo chown himbeerepi:himbeerepi /var/lib/himbeerepi/users.db
+sudo systemctl start himbeerepi
 ```
 
 **Speicher-Platte defekt (mit Ausbau 2):** neue Platte über den Assistenten als Ausbau 1 einrichten, dann die Spiegelung zurückkopieren:
 
 ```bash
-sudo systemctl stop raspicloud
-sudo rsync -a /srv/raspicloud-backup/dateien/ /srv/raspicloud/
-sudo cp "$(ls -t /srv/raspicloud-backup/db_backups/users_db_*.db | head -n 1)" /var/lib/raspicloud/users.db
-sudo rm -f /var/lib/raspicloud/users.db-wal /var/lib/raspicloud/users.db-shm
-sudo chown -R raspicloud:raspicloud /srv/raspicloud /var/lib/raspicloud
-sudo systemctl start raspicloud
+sudo systemctl stop himbeerepi
+sudo rsync -a /srv/himbeerepi-backup/dateien/ /srv/himbeerepi/
+sudo cp "$(ls -t /srv/himbeerepi-backup/db_backups/users_db_*.db | head -n 1)" /var/lib/himbeerepi/users.db
+sudo rm -f /var/lib/himbeerepi/users.db-wal /var/lib/himbeerepi/users.db-shm
+sudo chown -R himbeerepi:himbeerepi /srv/himbeerepi /var/lib/himbeerepi
+sudo systemctl start himbeerepi
 ```
 
 Dateien, die nach der letzten Spiegelung hochgeladen wurden, fehlen dann.
@@ -383,11 +383,11 @@ Dateien, die nach der letzten Spiegelung hochgeladen wurden, fehlen dann.
 ## 15. Aktualisieren
 
 ```bash
-cd /opt/raspicloud && sudo git pull
-sudo /opt/raspicloud/deploy/install.sh
+cd /opt/himbeerepi && sudo git pull
+sudo /opt/himbeerepi/deploy/install.sh
 ```
 
-Einstellungen, Datenbank und Dateien bleiben erhalten (geht auch über den Assistenten: „RaspiCloud installieren / aktualisieren“). Das Betriebssystem hältst du mit `sudo apt update && sudo apt full-upgrade` aktuell. Das geht auch automatisch mit dem Paket `unattended-upgrades`.
+Einstellungen, Datenbank und Dateien bleiben erhalten (geht auch über den Assistenten: „HimbeerePi installieren / aktualisieren“). Das Betriebssystem hältst du mit `sudo apt update && sudo apt full-upgrade` aktuell. Das geht auch automatisch mit dem Paket `unattended-upgrades`.
 
 ---
 
@@ -397,22 +397,22 @@ Einstellungen, Datenbank und Dateien bleiben erhalten (geht auch über den Assis
 |---|---|
 | Seite nicht erreichbar (von außen) | Im Heimnetz testen (Schritt 6). Geht es dort: DNS (Schritt 7), Portfreigabe (Schritt 8), `sudo journalctl -u caddy -n 50` prüfen |
 | Caddy bekommt kein Zertifikat | Port 80 muss frei und freigegeben sein; die Domain muss auf deine aktuelle IP zeigen; bei DS-Lite siehe Hinweis in Schritt 7 |
-| „502 Bad Gateway“ | Die Cloud läuft nicht: `sudo systemctl status raspicloud` und `sudo journalctl -u raspicloud -n 50` |
+| „502 Bad Gateway“ | Die Cloud läuft nicht: `sudo systemctl status himbeerepi` und `sudo journalctl -u himbeerepi -n 50` |
 | Anmeldung springt immer zurück zum Login | Aufruf über `http://` statt `https://`: HTTPS verwenden (bzw. nur zum Testen Schritt 6) |
 | „Zu viele fehlgeschlagene Anmeldeversuche“ | 15 Minuten warten; Passwort vergessen: `reset_password.py` (siehe README) |
-| Nach Ausbau 1 zeigt der Speicherplatz die SD-Karte, Dateien fehlen | Die Platte ist nicht eingehängt (z. B. nicht angeschlossen beim Start): `findmnt /srv/raspicloud`, dann `sudo systemctl stop raspicloud && sudo mount /srv/raspicloud && sudo systemctl start raspicloud` |
+| Nach Ausbau 1 zeigt der Speicherplatz die SD-Karte, Dateien fehlen | Die Platte ist nicht eingehängt (z. B. nicht angeschlossen beim Start): `findmnt /srv/himbeerepi`, dann `sudo systemctl stop himbeerepi && sudo mount /srv/himbeerepi && sudo systemctl start himbeerepi` |
 | SD-Karte voll (Grundeinrichtung) | Ausbau 1 einrichten, oder alte Dateien und den Papierkorb leeren |
-| Dienst startet nicht: `KeyError: 'SECRET_KEY'` | `/etc/raspicloud/raspicloud.env` fehlt oder `SECRET_KEY=` ist leer: `install.sh` erneut ausführen |
+| Dienst startet nicht: `KeyError: 'SECRET_KEY'` | `/etc/himbeerepi/himbeerepi.env` fehlt oder `SECRET_KEY=` ist leer: `install.sh` erneut ausführen |
 | Keine Vorschaubilder für PDF/RAW | `sudo apt install poppler-utils libimage-exiftool-perl dcraw` (macht `install.sh` normalerweise selbst) |
-| Upload bricht bei großen Dateien ab | Prüfen, ob der Speicher voll ist (`df -h /srv/raspicloud`); über WLAN wenn möglich per Kabel verbinden |
-| Temperatur / Leistung „n/a“ | Auf anderen Rechnern als dem Raspberry Pi fehlt `vcgencmd`; auf dem Pi: `sudo usermod -aG video raspicloud` und Dienst neu starten |
+| Upload bricht bei großen Dateien ab | Prüfen, ob der Speicher voll ist (`df -h /srv/himbeerepi`); über WLAN wenn möglich per Kabel verbinden |
+| Temperatur / Leistung „n/a“ | Auf anderen Rechnern als dem Raspberry Pi fehlt `vcgencmd`; auf dem Pi: `sudo usermod -aG video himbeerepi` und Dienst neu starten |
 
 Nützliche Befehle:
 
 ```bash
-sudo systemctl status raspicloud        # läuft der Dienst?
-sudo systemctl restart raspicloud       # neu starten
-sudo journalctl -u raspicloud -f        # Log live mitlesen (Strg+C beendet)
-tail /srv/raspicloud/backups/backup_db.log
-tail /var/log/raspicloud-setup.log      # Protokoll des Einrichtungsassistenten
+sudo systemctl status himbeerepi        # läuft der Dienst?
+sudo systemctl restart himbeerepi       # neu starten
+sudo journalctl -u himbeerepi -f        # Log live mitlesen (Strg+C beendet)
+tail /srv/himbeerepi/backups/backup_db.log
+tail /var/log/himbeerepi-setup.log      # Protokoll des Einrichtungsassistenten
 ```

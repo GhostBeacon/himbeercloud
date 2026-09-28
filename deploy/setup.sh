@@ -1,41 +1,41 @@
 #!/bin/bash
-# RaspiCloud - Einrichtungsassistent
+# HimbeerePi - Einrichtungsassistent
 #
-#   sudo /opt/raspicloud/deploy/setup.sh
+#   sudo /opt/himbeerepi/deploy/setup.sh
 #
 # Fuehrt mit Menues durch die Einrichtung, in drei Stufen:
-#   Grundeinrichtung  ohne externe Festplatte - Dateien liegen auf der SD-Karte (/srv/raspicloud):
+#   Grundeinrichtung  ohne externe Festplatte - Dateien liegen auf der SD-Karte (/srv/himbeerepi):
 #                     Installation, Benutzer, Zugang (Domain mit HTTPS oder Heimnetz), Firewall
 #   Ausbau 1          Festplatte als Speicher - die vorhandenen Dateien werden auf die Platte
-#                     kopiert, geprueft, und die Platte wird unter /srv/raspicloud eingehaengt
-#   Ausbau 2          zweite Festplatte als Backup (/srv/raspicloud-backup) mit taeglicher
+#                     kopiert, geprueft, und die Platte wird unter /srv/himbeerepi eingehaengt
+#   Ausbau 2          zweite Festplatte als Backup (/srv/himbeerepi-backup) mit taeglicher
 #                     Datenbank-Kopie und woechentlicher Spiegelung aller Dateien
 # Jeder Schritt laesst sich einzeln wiederholen; der Assistent kann jederzeit erneut gestartet
-# werden, um etwas zu aendern. Protokoll: /var/log/raspicloud-setup.log
+# werden, um etwas zu aendern. Protokoll: /var/log/himbeerepi-setup.log
 #
 # Die Menues nutzen whiptail (auf Raspberry Pi OS vorinstalliert).
 
 set -uo pipefail
 
-INSTALL_DIR="${RASPICLOUD_INSTALL_DIR:-/opt/raspicloud}"
-ENV_FILE="${RASPICLOUD_ENV_FILE:-/etc/raspicloud/raspicloud.env}"
-FSTAB="${RASPICLOUD_FSTAB:-/etc/fstab}"
-CADDYFILE="${RASPICLOUD_CADDYFILE:-/etc/caddy/Caddyfile}"
-MIRROR_CRON="${RASPICLOUD_MIRROR_CRON:-/etc/cron.d/raspicloud-mirror}"
-LOG="${RASPICLOUD_SETUP_LOG:-/var/log/raspicloud-setup.log}"
-SERVICE_USER="raspicloud"
-DATA_DIR_DEFAULT="/srv/raspicloud"
-BACKUP_MOUNT="/srv/raspicloud-backup"
-MIGRATE_MOUNT="/mnt/raspicloud-umzug"
+INSTALL_DIR="${HIMBEEREPI_INSTALL_DIR:-/opt/himbeerepi}"
+ENV_FILE="${HIMBEEREPI_ENV_FILE:-/etc/himbeerepi/himbeerepi.env}"
+FSTAB="${HIMBEEREPI_FSTAB:-/etc/fstab}"
+CADDYFILE="${HIMBEEREPI_CADDYFILE:-/etc/caddy/Caddyfile}"
+MIRROR_CRON="${HIMBEEREPI_MIRROR_CRON:-/etc/cron.d/himbeerepi-mirror}"
+LOG="${HIMBEEREPI_SETUP_LOG:-/var/log/himbeerepi-setup.log}"
+SERVICE_USER="himbeerepi"
+DATA_DIR_DEFAULT="/srv/himbeerepi"
+BACKUP_MOUNT="/srv/himbeerepi-backup"
+MIGRATE_MOUNT="/mnt/himbeerepi-umzug"
 HDD_WATTS_EACH=7
-CADDY_MARKER="# Verwaltet vom RaspiCloud-Einrichtungsassistenten"
-TITLE="RaspiCloud – Einrichtung"
+CADDY_MARKER="# Verwaltet vom HimbeerePi-Einrichtungsassistenten"
+TITLE="HimbeerePi – Einrichtung"
 
 # ---------------------------------------------------------------- Dialoge
 
 # whiptail schreibt die Antwort auf stderr - hier auf stdout umgelenkt, damit $(...) sie liest
 wt() {
-    whiptail --title "$TITLE" --backtitle "RaspiCloud $(cat "$INSTALL_DIR/VERSION" 2>/dev/null)" "$@" 3>&1 1>&2 2>&3
+    whiptail --title "$TITLE" --backtitle "HimbeerePi $(cat "$INSTALL_DIR/VERSION" 2>/dev/null)" "$@" 3>&1 1>&2 2>&3
 }
 msg()      { wt --msgbox "$1" "${2:-16}" 76; }
 ask()      { wt --yesno "$1" "${2:-14}" 76; }
@@ -67,7 +67,7 @@ env_get() {
 }
 
 # env_set KEY WERT: ersetzt KEY= oder #KEY= oder haengt an. Schreibt in die bestehende Datei,
-# damit Besitzer und Rechte (root:raspicloud 640) erhalten bleiben.
+# damit Besitzer und Rechte (root:himbeerepi 640) erhalten bleiben.
 env_set() {
     local key="$1" value="$2" tmp
     tmp="$(mktemp)"
@@ -84,14 +84,14 @@ env_unset() {
     log "Einstellung: $1 entfernt"
 }
 
-data_dir()    { local d; d="$(env_get RASPICLOUD_DATA_DIR)"; echo "${d:-$DATA_DIR_DEFAULT}"; }
+data_dir()    { local d; d="$(env_get HIMBEEREPI_DATA_DIR)"; echo "${d:-$DATA_DIR_DEFAULT}"; }
 installed()   { [ -x "$INSTALL_DIR/venv/bin/python3" ] && [ -f "$ENV_FILE" ]; }
-restart_app() { systemctl restart raspicloud >> "$LOG" 2>&1; }
+restart_app() { systemctl restart himbeerepi >> "$LOG" 2>&1; }
 app_ok()      { [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:5000/login || true)" = "200" ]; }
 
 need_install() {
     installed && return 0
-    msg "Dafür muss RaspiCloud zuerst installiert sein (Grundeinrichtung bzw. \"RaspiCloud installieren\")."
+    msg "Dafür muss HimbeerePi zuerst installiert sein (Grundeinrichtung bzw. \"HimbeerePi installieren\")."
     return 1
 }
 
@@ -106,8 +106,8 @@ apt_install() {
 
 manage() {
     local db
-    db="$(env_get RASPICLOUD_DB)"
-    sudo -u "$SERVICE_USER" env RASPICLOUD_DB="${db:-/var/lib/raspicloud/users.db}" \
+    db="$(env_get HIMBEEREPI_DB)"
+    sudo -u "$SERVICE_USER" env HIMBEEREPI_DB="${db:-/var/lib/himbeerepi/users.db}" \
         "$INSTALL_DIR/venv/bin/python3" "$INSTALL_DIR/app/manage.py" "$@"
 }
 
@@ -125,7 +125,7 @@ update_hdd_watts() {
     local n=0
     mountpoint -q "$(data_dir)" && n=$((n + 1))
     mountpoint -q "$BACKUP_MOUNT" && n=$((n + 1))
-    env_set RASPICLOUD_HDD_WATTS "$((n * HDD_WATTS_EACH))"
+    env_set HIMBEEREPI_HDD_WATTS "$((n * HDD_WATTS_EACH))"
 }
 
 # ---------------------------------------------------------------- Festplatten
@@ -251,7 +251,7 @@ fstab_set() {
     local part="$1" mp="$2" uuid tmp
     uuid="$(blkid -s UUID -o value "$part")"
     [ -n "$uuid" ] || return 1
-    [ -f "$FSTAB.raspicloud-bak" ] || cp "$FSTAB" "$FSTAB.raspicloud-bak"
+    [ -f "$FSTAB.himbeerepi-bak" ] || cp "$FSTAB" "$FSTAB.himbeerepi-bak"
     tmp="$(mktemp)"
     awk -v mp="$mp" '$2 != mp' "$FSTAB" > "$tmp" && cat "$tmp" > "$FSTAB"
     rm -f "$tmp"
@@ -280,14 +280,14 @@ mount_fstab() {
 step_install() {
     local verb="installieren" text
     installed && verb="aktualisieren"
-    ask "RaspiCloud $verb\n\nInstalliert Pakete, Dienst, Datenbank, tägliches Backup und Gesundheitsprüfung. Einstellungen, Benutzer und Dateien bleiben erhalten.\n\nOhne externe Festplatte liegen die Dateien zunächst auf der SD-Karte unter $(data_dir). Eine Festplatte lässt sich später jederzeit ergänzen (Ausbau 1) – die Dateien ziehen dann automatisch um.\n\nDauer: etwa 2–10 Minuten." 20 || return 0
-    text="RaspiCloud wird installiert"
-    [ "$verb" = "aktualisieren" ] && text="RaspiCloud wird aktualisiert"
+    ask "HimbeerePi $verb\n\nInstalliert Pakete, Dienst, Datenbank, tägliches Backup und Gesundheitsprüfung. Einstellungen, Benutzer und Dateien bleiben erhalten.\n\nOhne externe Festplatte liegen die Dateien zunächst auf der SD-Karte unter $(data_dir). Eine Festplatte lässt sich später jederzeit ergänzen (Ausbau 1) – die Dateien ziehen dann automatisch um.\n\nDauer: etwa 2–10 Minuten." 20 || return 0
+    text="HimbeerePi wird installiert"
+    [ "$verb" = "aktualisieren" ] && text="HimbeerePi wird aktualisiert"
     if run "$text" "$INSTALL_DIR/deploy/install.sh"; then
         if [ "$verb" = "aktualisieren" ]; then
-            msg "RaspiCloud ist aktualisiert und läuft."
+            msg "HimbeerePi ist aktualisiert und läuft."
         else
-            msg "RaspiCloud läuft.\n\nWeiter geht es mit dem ersten Benutzer."
+            msg "HimbeerePi läuft.\n\nWeiter geht es mit dem ersten Benutzer."
         fi
     fi
 }
@@ -343,7 +343,7 @@ write_caddyfile() {
     local site="$1"
     mkdir -p "$(dirname "$CADDYFILE")"
     if [ -f "$CADDYFILE" ] && ! grep -q "$CADDY_MARKER" "$CADDYFILE"; then
-        cp "$CADDYFILE" "$CADDYFILE.raspicloud-bak-$(date +%Y%m%d%H%M%S)"
+        cp "$CADDYFILE" "$CADDYFILE.himbeerepi-bak-$(date +%Y%m%d%H%M%S)"
         log "Caddyfile gesichert"
     fi
     printf '%s\n# Neu erzeugen: sudo %s/deploy/setup.sh -> Zugang\n\n%s {\n\treverse_proxy 127.0.0.1:5000\n}\n' \
@@ -353,7 +353,7 @@ write_caddyfile() {
 
 access_internet() {
     local domain dns_ip pub_ip code i
-    domain="$(input "Unter welcher Adresse soll die Cloud erreichbar sein?\n\nBeispiel: cloud.meinname.de\n(Die Domain oder DynDNS-Adresse muss auf deinen Internetanschluss zeigen.)" "$(env_get RASPICLOUD_DOMAIN)" 14)" || return 1
+    domain="$(input "Unter welcher Adresse soll die Cloud erreichbar sein?\n\nBeispiel: cloud.meinname.de\n(Die Domain oder DynDNS-Adresse muss auf deinen Internetanschluss zeigen.)" "$(env_get HIMBEEREPI_DOMAIN)" 14)" || return 1
     domain="$(echo "$domain" | tr 'A-Z' 'a-z' | sed 's#^https\?://##; s#/.*$##')"
     if ! [[ "$domain" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]]; then
         msg "\"$domain\" ist keine gültige Adresse."
@@ -371,9 +371,9 @@ access_internet() {
     ask "Sind die Portfreigaben eingerichtet?" 8 || return 1
     apt_install caddy || return 1
     write_caddyfile "$domain"
-    env_set RASPICLOUD_DOMAIN "$domain"
-    env_set RASPICLOUD_ACCESS internet
-    env_unset RASPICLOUD_INSECURE_COOKIE
+    env_set HIMBEEREPI_DOMAIN "$domain"
+    env_set HIMBEEREPI_ACCESS internet
+    env_unset HIMBEEREPI_INSECURE_COOKIE
     restart_app
     systemctl enable caddy >> "$LOG" 2>&1
     systemctl restart caddy >> "$LOG" 2>&1
@@ -397,9 +397,9 @@ access_lan() {
     ask_no "Nur im Heimnetz\n\nDie Cloud ist dann unter http://$(lan_ip) erreichbar – ohne Verschlüsselung und nicht von unterwegs. Passwörter gehen unverschlüsselt durchs Heimnetz (WLAN!).\n\nFür unterwegs besser später \"Domain mit HTTPS\" wählen oder ein VPN nutzen.\n\nSo einrichten?" 16 || return 1
     apt_install caddy || return 1
     write_caddyfile ":80"
-    env_set RASPICLOUD_ACCESS heimnetz
-    env_set RASPICLOUD_INSECURE_COOKIE 1
-    env_unset RASPICLOUD_DOMAIN
+    env_set HIMBEEREPI_ACCESS heimnetz
+    env_set HIMBEEREPI_INSECURE_COOKIE 1
+    env_unset HIMBEEREPI_DOMAIN
     restart_app
     systemctl enable caddy >> "$LOG" 2>&1
     systemctl restart caddy >> "$LOG" 2>&1
@@ -433,7 +433,7 @@ ssh_peers() {
 step_firewall() {
     local subnet access peers rules p
     subnet="$(lan_subnet)"
-    access="$(env_get RASPICLOUD_ACCESS)"
+    access="$(env_get HIMBEEREPI_ACCESS)"
     peers="$(ssh_peers)"
     rules="  - alles Eingehende blockieren, außer:\n"
     rules+="  - SSH (Port 22) aus dem Heimnetz ${subnet:-(nicht erkannt)}\n"
@@ -466,7 +466,7 @@ step_firewall() {
 step_ntfy() {
     local topic
     topic="$(env_get NTFY_TOPIC)"
-    [ -z "$topic" ] && topic="raspicloud-$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')"
+    [ -z "$topic" ] && topic="himbeerepi-$(od -An -tx1 -N8 /dev/urandom | tr -d ' \n')"
     topic="$(input "Push-Meldungen über ntfy\n\nNach jedem nächtlichen Backup kommt eine Meldung aufs Handy. Dafür die App \"ntfy\" installieren und diesen Kanal abonnieren. Der Name wirkt wie ein Passwort – zufällig lassen!\n\nKanal (leer = ausschalten):" "$topic" 18)" || return 0
     if [ -z "$topic" ]; then
         env_unset NTFY_TOPIC
@@ -479,8 +479,8 @@ step_ntfy() {
     fi
     env_set NTFY_TOPIC "$topic"
     # shellcheck source=/dev/null
-    if (RASPICLOUD_ENV_FILE="$ENV_FILE" && source "$INSTALL_DIR/scripts/notify_ntfy.sh" \
-        && notify_backup "RaspiCloud: Test" "Push-Meldungen funktionieren." "default" "tada"); then
+    if (HIMBEEREPI_ENV_FILE="$ENV_FILE" && source "$INSTALL_DIR/scripts/notify_ntfy.sh" \
+        && notify_backup "HimbeerePi: Test" "Push-Meldungen funktionieren." "default" "tada"); then
         msg "Eine Testmeldung wurde an den Kanal\n\n   $topic\n\ngeschickt. In der ntfy-App diesen Kanal abonnieren."
     else
         msg "Die Testmeldung konnte nicht verschickt werden (Internet?). Der Kanal ist trotzdem gespeichert."
@@ -489,13 +489,13 @@ step_ntfy() {
 
 step_price() {
     local price
-    price="$(input "Strompreis in Euro pro kWh (für die geschätzten Stromkosten im Pi-Status)" "$(env_get RASPICLOUD_POWER_PRICE | sed 's/^$/0.35/')")" || return 0
+    price="$(input "Strompreis in Euro pro kWh (für die geschätzten Stromkosten im Pi-Status)" "$(env_get HIMBEEREPI_POWER_PRICE | sed 's/^$/0.35/')")" || return 0
     price="${price/,/.}"
     if ! [[ "$price" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
         msg "Bitte eine Zahl eingeben, z. B. 0.35"
         return 0
     fi
-    env_set RASPICLOUD_POWER_PRICE "$price"
+    env_set HIMBEEREPI_POWER_PRICE "$price"
     restart_app
 }
 
@@ -541,7 +541,7 @@ step_storage() {
     fi
     used_bytes="$(du -sb "$dir" 2>/dev/null | awk '{print $1}')"
     files="$(find "$dir" -type f 2>/dev/null | wc -l)"
-    choose_disk "$MIGRATE_MOUNT" "raspicloud" "Ausbau 1: Festplatte als Speicher\n\nDie Dateien liegen bisher auf der SD-Karte ($files Datei(en), $(human "${used_bytes:-0}")). Sie werden auf die Festplatte kopiert und geprüft; danach nutzt die Cloud die Platte. Während des Umzugs ist die Cloud kurz nicht erreichbar. Die Kopie auf der SD-Karte bleibt, bis du sie löschst." || return 0
+    choose_disk "$MIGRATE_MOUNT" "himbeerepi" "Ausbau 1: Festplatte als Speicher\n\nDie Dateien liegen bisher auf der SD-Karte ($files Datei(en), $(human "${used_bytes:-0}")). Sie werden auf die Festplatte kopiert und geprüft; danach nutzt die Cloud die Platte. Während des Umzugs ist die Cloud kurz nicht erreichbar. Die Kopie auf der SD-Karte bleibt, bis du sie löschst." || return 0
 
     # Partition vorübergehend einhängen, Platz und vorhandenen Inhalt prüfen
     mkdir -p "$MIGRATE_MOUNT"
@@ -567,7 +567,7 @@ step_storage() {
         umount "$MIGRATE_MOUNT" >> "$LOG" 2>&1
         return 0
     fi
-    systemctl stop raspicloud >> "$LOG" 2>&1
+    systemctl stop himbeerepi >> "$LOG" 2>&1
     if ! run "Kopiere $files Datei(en) ($(human "${used_bytes:-0}")) auf die Festplatte" rsync -aHAX "$dir/" "$MIGRATE_MOUNT/"; then
         umount "$MIGRATE_MOUNT" >> "$LOG" 2>&1
         restart_app
@@ -602,7 +602,7 @@ step_storage() {
     sleep 2
     if ! app_ok; then
         restore_sd_copy "$dir" "$old"
-        msg "Die Cloud ist mit der Platte nicht gestartet. Alles wurde zurückgenommen – sie läuft wie vorher von der SD-Karte. Details: $LOG und journalctl -u raspicloud" 12
+        msg "Die Cloud ist mit der Platte nicht gestartet. Alles wurde zurückgenommen – sie läuft wie vorher von der SD-Karte. Details: $LOG und journalctl -u himbeerepi" 12
         return 0
     fi
     log "Umzug auf $PART abgeschlossen, alte Kopie: $old"
@@ -627,7 +627,7 @@ step_backup() {
     elif ! mountpoint -q "$dir"; then
         ask_no "Ausbau 2: Backup-Festplatte\n\nHinweis: Die Dateien liegen noch auf der SD-Karte (Ausbau 1 fehlt). Eine Backup-Platte schützt sie trotzdem – empfohlen ist aber, zuerst Ausbau 1 einzurichten.\n\nTrotzdem jetzt die Backup-Platte einrichten?" 14 || return 0
     fi
-    choose_disk "$BACKUP_MOUNT" "raspicloud-bak" "Ausbau 2: zweite Festplatte als Backup\n\nAuf diese Platte kommen jede Nacht eine Kopie der Datenbank und jeden Sonntag eine Spiegelung aller Dateien. Fällt die Speicher-Platte aus, ist nichts verloren." || return 0
+    choose_disk "$BACKUP_MOUNT" "himbeerepi-bak" "Ausbau 2: zweite Festplatte als Backup\n\nAuf diese Platte kommen jede Nacht eine Kopie der Datenbank und jeden Sonntag eine Spiegelung aller Dateien. Fällt die Speicher-Platte aus, ist nichts verloren." || return 0
     mountpoint -q "$BACKUP_MOUNT" && umount "$BACKUP_MOUNT" >> "$LOG" 2>&1
     if ! fstab_set "$PART" "$BACKUP_MOUNT" || ! mount_fstab "$BACKUP_MOUNT"; then
         fstab_remove "$BACKUP_MOUNT"
@@ -635,16 +635,16 @@ step_backup() {
         return 0
     fi
     install -d -o "$SERVICE_USER" -g "$SERVICE_USER" "$BACKUP_MOUNT/db_backups"
-    env_set RASPICLOUD_BACKUP_MOUNT "$BACKUP_MOUNT"
+    env_set HIMBEEREPI_BACKUP_MOUNT "$BACKUP_MOUNT"
     update_hdd_watts
     restart_app
     apt_install rsync
-    printf '# RaspiCloud: woechentliche Spiegelung aller Dateien (angelegt vom Einrichtungsassistenten)\n0 2 * * 0 root mountpoint -q %s && rsync -a --delete --exclude=/lost+found --exclude=/tmp_uploads %s/ %s/dateien/ >> /var/log/raspicloud-mirror.log 2>&1\n' \
+    printf '# HimbeerePi: woechentliche Spiegelung aller Dateien (angelegt vom Einrichtungsassistenten)\n0 2 * * 0 root mountpoint -q %s && rsync -a --delete --exclude=/lost+found --exclude=/tmp_uploads %s/ %s/dateien/ >> /var/log/himbeerepi-mirror.log 2>&1\n' \
         "$BACKUP_MOUNT" "$dir" "$BACKUP_MOUNT" > "$MIRROR_CRON"
     log "Backup-Platte $PART, Spiegelung eingerichtet"
     if ask "Backup-Platte ist eingerichtet ($PART unter $BACKUP_MOUNT).\n\n  - Datenbank: jede Nacht um 3:10 Uhr\n  - alle Dateien: jeden Sonntag um 2 Uhr gespiegelt\n\nErste Spiegelung jetzt im Hintergrund starten?" 16; then
-        nohup bash -c "rsync -a --delete --exclude=/lost+found --exclude=/tmp_uploads '$dir/' '$BACKUP_MOUNT/dateien/' >> /var/log/raspicloud-mirror.log 2>&1" >/dev/null 2>&1 &
-        msg "Die erste Spiegelung läuft im Hintergrund. Fortschritt/Fehler: /var/log/raspicloud-mirror.log"
+        nohup bash -c "rsync -a --delete --exclude=/lost+found --exclude=/tmp_uploads '$dir/' '$BACKUP_MOUNT/dateien/' >> /var/log/himbeerepi-mirror.log 2>&1" >/dev/null 2>&1 &
+        msg "Die erste Spiegelung läuft im Hintergrund. Fortschritt/Fehler: /var/log/himbeerepi-mirror.log"
     fi
 }
 
@@ -652,7 +652,7 @@ step_backup() {
 
 summary_text() {
     local access domain addr dir storage backup users fw ntfy
-    access="$(env_get RASPICLOUD_ACCESS)"; domain="$(env_get RASPICLOUD_DOMAIN)"
+    access="$(env_get HIMBEEREPI_ACCESS)"; domain="$(env_get HIMBEEREPI_DOMAIN)"
     case "$access" in
         internet) addr="https://$domain" ;;
         heimnetz) addr="http://$(lan_ip) (nur Heimnetz)" ;;
@@ -674,9 +674,9 @@ summary_text() {
     fi
     if installed; then
         users="$(manage count-users 2>/dev/null | tail -n 1)"
-        if systemctl is-active --quiet raspicloud; then users+=" (Dienst läuft)"; else users+=" (Dienst läuft NICHT)"; fi
+        if systemctl is-active --quiet himbeerepi; then users+=" (Dienst läuft)"; else users+=" (Dienst läuft NICHT)"; fi
     else
-        users="RaspiCloud noch nicht installiert"
+        users="HimbeerePi noch nicht installiert"
     fi
     fw="$(ufw status 2>/dev/null | head -n 1 | sed 's/Status: //')"; fw="${fw:-nicht eingerichtet}"
     if [ -n "$(env_get NTFY_TOPIC)" ]; then ntfy="an"; else ntfy="aus"; fi
@@ -708,8 +708,8 @@ main() {
         exit 1
     fi
     if [ ! -f "$INSTALL_DIR/deploy/install.sh" ]; then
-        echo "RaspiCloud muss unter $INSTALL_DIR liegen:" >&2
-        echo "  sudo git clone https://github.com/GhostBeacon/raspicloud.git $INSTALL_DIR" >&2
+        echo "HimbeerePi muss unter $INSTALL_DIR liegen:" >&2
+        echo "  sudo git clone https://github.com/GhostBeacon/himbeercloud.git $INSTALL_DIR" >&2
         exit 1
     fi
     touch "$LOG" && chmod 600 "$LOG"
@@ -719,7 +719,7 @@ main() {
     fi
     log "Assistent gestartet"
 
-    msg "Willkommen bei RaspiCloud!\n\nDie Einrichtung geht in Stufen:\n\n  Grundeinrichtung   ohne externe Festplatte – die Dateien liegen\n                     auf der SD-Karte. Installation, Benutzer,\n                     Zugang, Firewall.\n  Ausbau 1           Festplatte als Speicher (Dateien ziehen um)\n  Ausbau 2           zweite Festplatte als Backup\n\nBedienung: Pfeiltasten, Tab und Enter. Esc bricht einen Schritt ab." 20
+    msg "Willkommen bei HimbeerePi!\n\nDie Einrichtung geht in Stufen:\n\n  Grundeinrichtung   ohne externe Festplatte – die Dateien liegen\n                     auf der SD-Karte. Installation, Benutzer,\n                     Zugang, Firewall.\n  Ausbau 1           Festplatte als Speicher (Dateien ziehen um)\n  Ausbau 2           zweite Festplatte als Backup\n\nBedienung: Pfeiltasten, Tab und Enter. Esc bricht einen Schritt ab." 20
 
     local choice default="grund"
     installed && default="status"
@@ -728,7 +728,7 @@ main() {
             "grund"    "Grundeinrichtung (ohne externe Festplatte)" \
             "ausbau1"  "Ausbau 1: Festplatte als Speicher" \
             "ausbau2"  "Ausbau 2: zweite Festplatte als Backup" \
-            "install"  "  RaspiCloud installieren / aktualisieren" \
+            "install"  "  HimbeerePi installieren / aktualisieren" \
             "benutzer" "  Benutzer anlegen" \
             "zugang"   "  Zugang (Domain & HTTPS oder Heimnetz)" \
             "firewall" "  Firewall" \
@@ -750,7 +750,7 @@ main() {
         default="status"
     done
     clear
-    echo "RaspiCloud – Stand der Einrichtung"
+    echo "HimbeerePi – Stand der Einrichtung"
     echo
     summary_text
     echo

@@ -11,8 +11,8 @@ Terminal sichtbar.
 WICHTIG: Am besten in einer 'screen'-Sitzung ausfuehren, damit der Import auch bei einer
 unterbrochenen SSH-Verbindung im Hintergrund weiterlaeuft:
     screen -S import
-    cd /opt/raspicloud/app
-    sudo -u raspicloud bash -c 'set -a; . /etc/raspicloud/raspicloud.env; set +a; ../venv/bin/python3 bulk_import.py <quellordner> <benutzername> [ziel-ordner-id]'
+    cd /opt/himbeerepi/app
+    sudo -u himbeerepi bash -c 'set -a; . /etc/himbeerepi/himbeerepi.env; set +a; ../venv/bin/python3 bulk_import.py <quellordner> <benutzername> [ziel-ordner-id]'
     (zum Verlassen der Sitzung, OHNE sie zu beenden: Strg+A, dann D)
     (zum spaeteren Wiedereinklinken: screen -r import)
 

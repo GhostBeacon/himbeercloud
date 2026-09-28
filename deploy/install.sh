@@ -1,19 +1,19 @@
 #!/bin/bash
-# RaspiCloud - Einrichtung bzw. Aktualisierung auf einem Raspberry Pi (Raspberry Pi OS / Debian).
+# HimbeerePi - Einrichtung bzw. Aktualisierung auf einem Raspberry Pi (Raspberry Pi OS / Debian).
 #
-#   sudo git clone https://github.com/GhostBeacon/raspicloud.git /opt/raspicloud
-#   sudo /opt/raspicloud/deploy/install.sh
+#   sudo git clone https://github.com/GhostBeacon/himbeercloud.git /opt/himbeerepi
+#   sudo /opt/himbeerepi/deploy/install.sh
 #
 # Mehrfach ausfuehrbar: vorhandene Einstellungen und Daten bleiben erhalten. Nach einem
 # "git pull" einfach erneut starten, um Updates einzuspielen.
 # Gefuehrte Einrichtung mit Menues (ruft dieses Skript selbst auf): deploy/setup.sh
 set -euo pipefail
 
-INSTALL_DIR="/opt/raspicloud"
-ENV_DIR="/etc/raspicloud"
-ENV_FILE="$ENV_DIR/raspicloud.env"
-STATE_DIR="/var/lib/raspicloud"
-SERVICE_USER="raspicloud"
+INSTALL_DIR="/opt/himbeerepi"
+ENV_DIR="/etc/himbeerepi"
+ENV_FILE="$ENV_DIR/himbeerepi.env"
+STATE_DIR="/var/lib/himbeerepi"
+SERVICE_USER="himbeerepi"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "Bitte mit sudo ausfuehren." >&2
@@ -23,7 +23,7 @@ fi
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 if [ "$REPO_DIR" != "$INSTALL_DIR" ]; then
     echo "Das Repo muss unter $INSTALL_DIR liegen (gefunden: $REPO_DIR)." >&2
-    echo "  sudo git clone https://github.com/GhostBeacon/raspicloud.git $INSTALL_DIR" >&2
+    echo "  sudo git clone https://github.com/GhostBeacon/himbeercloud.git $INSTALL_DIR" >&2
     exit 1
 fi
 
@@ -41,15 +41,15 @@ usermod -aG video "$SERVICE_USER" || true
 echo "==> Einstellungen $ENV_FILE"
 install -d -m 750 -o root -g "$SERVICE_USER" "$ENV_DIR"
 if [ ! -f "$ENV_FILE" ]; then
-    install -m 640 -o root -g "$SERVICE_USER" "$INSTALL_DIR/deploy/raspicloud.env.example" "$ENV_FILE"
+    install -m 640 -o root -g "$SERVICE_USER" "$INSTALL_DIR/deploy/himbeerepi.env.example" "$ENV_FILE"
     KEY="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
     sed -i "s/^SECRET_KEY=.*/SECRET_KEY=$KEY/" "$ENV_FILE"
     echo "    neu angelegt, SECRET_KEY erzeugt"
 fi
 # Werte fuer dieses Skript lesen (ohne die Datei auszufuehren)
-DATA_DIR="$(sed -n 's/^RASPICLOUD_DATA_DIR=//p' "$ENV_FILE" | head -n 1)"
-DATA_DIR="${DATA_DIR:-/srv/raspicloud}"
-DB_PATH="$(sed -n 's/^RASPICLOUD_DB=//p' "$ENV_FILE" | head -n 1)"
+DATA_DIR="$(sed -n 's/^HIMBEEREPI_DATA_DIR=//p' "$ENV_FILE" | head -n 1)"
+DATA_DIR="${DATA_DIR:-/srv/himbeerepi}"
+DB_PATH="$(sed -n 's/^HIMBEEREPI_DB=//p' "$ENV_FILE" | head -n 1)"
 DB_PATH="${DB_PATH:-$STATE_DIR/users.db}"
 
 echo "==> Ordner"
@@ -69,24 +69,24 @@ fi
 "$INSTALL_DIR/venv/bin/pip" install -q -r "$INSTALL_DIR/app/requirements.txt"
 
 echo "==> Datenbank"
-sudo -u "$SERVICE_USER" env RASPICLOUD_DB="$DB_PATH" "$INSTALL_DIR/venv/bin/python3" "$INSTALL_DIR/app/manage.py" init
+sudo -u "$SERVICE_USER" env HIMBEEREPI_DB="$DB_PATH" "$INSTALL_DIR/venv/bin/python3" "$INSTALL_DIR/app/manage.py" init
 
 echo "==> systemd und Cron"
-install -m 644 "$INSTALL_DIR/deploy/raspicloud.service" /etc/systemd/system/raspicloud.service
-if [ "$DATA_DIR" != "/srv/raspicloud" ]; then
-    sed -i "s#/srv/raspicloud#$DATA_DIR#g" /etc/systemd/system/raspicloud.service
+install -m 644 "$INSTALL_DIR/deploy/himbeerepi.service" /etc/systemd/system/himbeerepi.service
+if [ "$DATA_DIR" != "/srv/himbeerepi" ]; then
+    sed -i "s#/srv/himbeerepi#$DATA_DIR#g" /etc/systemd/system/himbeerepi.service
 fi
-install -m 644 "$INSTALL_DIR/deploy/raspicloud.cron" /etc/cron.d/raspicloud
+install -m 644 "$INSTALL_DIR/deploy/himbeerepi.cron" /etc/cron.d/himbeerepi
 systemctl daemon-reload
-systemctl enable raspicloud >/dev/null 2>&1
-systemctl restart raspicloud
+systemctl enable himbeerepi >/dev/null 2>&1
+systemctl restart himbeerepi
 
 sleep 3
 CODE="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/login || true)"
 if [ "$CODE" = "200" ]; then
-    echo "==> Fertig: RaspiCloud laeuft auf 127.0.0.1:5000"
+    echo "==> Fertig: HimbeerePi laeuft auf 127.0.0.1:5000"
 else
-    echo "==> Dienst antwortet nicht (HTTP $CODE). Log: journalctl -u raspicloud -n 50" >&2
+    echo "==> Dienst antwortet nicht (HTTP $CODE). Log: journalctl -u himbeerepi -n 50" >&2
     exit 1
 fi
 

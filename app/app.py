@@ -39,16 +39,16 @@ app = Flask(__name__)
 # WTF_CSRF_SSL_STRICT fuer POSTs der Weboberflaeche.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 # Der Secret Key liegt bewusst NICHT mehr im Quellcode, sondern in einer separaten Datei
-# mit Rechten 640 (nur fuer root und den Dienstbenutzer raspicloud lesbar), die per systemd 'EnvironmentFile'
-# eingebunden wird (siehe deploy/raspicloud.env.example und deploy/raspicloud.service). Stuende
+# mit Rechten 640 (nur fuer root und den Dienstbenutzer himbeerepi lesbar), die per systemd 'EnvironmentFile'
+# eingebunden wird (siehe deploy/himbeerepi.env.example und deploy/himbeerepi.service). Stuende
 # der Key hier im Klartext, koennte ihn jeder lokale Account auf dem Pi lesen (Session-Faelschung).
 app.secret_key = os.environ['SECRET_KEY']
 csrf = CSRFProtect(app)
 
 # Der Login ist ueber die eigene Domain (per Caddy-Reverse-Proxy, immer HTTPS) erreichbar -
 # das Session-Cookie soll deshalb nie unverschluesselt uebertragen werden.
-# Nur fuer lokale Tests ohne HTTPS: RASPICLOUD_INSECURE_COOKIE=1.
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('RASPICLOUD_INSECURE_COOKIE') != '1'
+# Nur fuer lokale Tests ohne HTTPS: HIMBEEREPI_INSECURE_COOKIE=1.
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('HIMBEEREPI_INSECURE_COOKIE') != '1'
 
 # Begrenzter Arbeiter-Pool fuer die Thumbnail-Erstellung im Hintergrund. Ohne Begrenzung wuerde
 # jede hochgeladene Datei einen komplett neuen, unbegrenzten Thread starten (siehe fruehere Version) -
@@ -105,9 +105,9 @@ def get_cached_value(key, ttl_seconds, compute_func):
             _value_cache[key] = entry
         return entry[0]
 
-# Ordner fuer die hochgeladenen Dateien (Einstellung RASPICLOUD_DATA_DIR). Ohne externe Festplatte
+# Ordner fuer die hochgeladenen Dateien (Einstellung HIMBEEREPI_DATA_DIR). Ohne externe Festplatte
 # liegt er auf der SD-Karte; mit Speicher-Festplatte ist diese genau hier eingehaengt.
-UPLOAD_FOLDER = os.environ.get('RASPICLOUD_DATA_DIR', '/srv/raspicloud')
+UPLOAD_FOLDER = os.environ.get('HIMBEEREPI_DATA_DIR', '/srv/himbeerepi')
 THUMBNAIL_FOLDER = os.path.join(UPLOAD_FOLDER, 'thumbnails')
 BACKUP_FOLDER = os.path.join(UPLOAD_FOLDER, 'backups')  # Ziel von scripts/backup_db.sh
 
@@ -166,8 +166,8 @@ class User(UserMixin):
         self.show_system_stats = bool(show_system_stats)
 
 
-# Benutzer-Datenbank (Einstellung RASPICLOUD_DB)
-DB_PATH = os.environ.get('RASPICLOUD_DB', '/var/lib/raspicloud/users.db')
+# Benutzer-Datenbank (Einstellung HIMBEEREPI_DB)
+DB_PATH = os.environ.get('HIMBEEREPI_DB', '/var/lib/himbeerepi/users.db')
 
 
 def get_db_connection():
@@ -192,8 +192,8 @@ def _float_env(name, default):
         return default
 
 
-ELECTRICITY_PRICE_EUR_PER_KWH = _float_env('RASPICLOUD_POWER_PRICE', 0.35)  # eigener Strompreis in EUR/kWh
-HDD_WATTS_ESTIMATE = _float_env('RASPICLOUD_HDD_WATTS', 0.0)  # Pauschale fuer externe Festplatten (kein eigener Stromsensor)
+ELECTRICITY_PRICE_EUR_PER_KWH = _float_env('HIMBEEREPI_POWER_PRICE', 0.35)  # eigener Strompreis in EUR/kWh
+HDD_WATTS_ESTIMATE = _float_env('HIMBEEREPI_HDD_WATTS', 0.0)  # Pauschale fuer externe Festplatten (kein eigener Stromsensor)
 
 
 def get_pi_power_watts():
@@ -877,7 +877,7 @@ def setup_2fa():
     session['pending_totp_secret'] = secret
 
     provisioning_uri = pyotp.TOTP(secret).provisioning_uri(
-        name=current_user.username, issuer_name="RaspiCloud")
+        name=current_user.username, issuer_name="HimbeerePi")
 
     qr_img = qrcode.make(provisioning_uri)
     buf = io.BytesIO()
@@ -1049,7 +1049,7 @@ def _read_app_version():
             with open(path, encoding='utf-8') as f:
                 value = f.read().strip()[:40]
                 if value:
-                    return 'RaspiCloud ' + value
+                    return 'HimbeerePi ' + value
         except OSError:
             pass
     return None

@@ -1,4 +1,4 @@
-"""Erzeugt die Browser-Symbole von RaspiCloud: weisse Wolke mit Himbeer-Zweig auf himbeerroter Kachel.
+"""Erzeugt die Browser-Symbole von HimbeerePi: weisse Wolke mit Himbeer-Zweig auf himbeerroter Kachel.
 
     python3 tools/make_icons.py        # braucht Pillow
 

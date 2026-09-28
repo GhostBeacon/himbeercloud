@@ -4,15 +4,15 @@ alles (Passwort-Eingabe, Hash-Erzeugung, Datenbank-Update) innerhalb von Python 
 ohne den Hash jemals durch eine Shell-Zeichenkette zu schleusen.
 
 Verwendung:
-    cd /opt/raspicloud/app
-    sudo -u raspicloud ../venv/bin/python3 reset_password.py
+    cd /opt/himbeerepi/app
+    sudo -u himbeerepi ../venv/bin/python3 reset_password.py
 """
 import os
 import sqlite3
 import getpass
 from werkzeug.security import generate_password_hash
 
-DB_PATH = os.environ.get("RASPICLOUD_DB", "/var/lib/raspicloud/users.db")
+DB_PATH = os.environ.get("HIMBEEREPI_DB", "/var/lib/himbeerepi/users.db")
 
 username = input("Benutzername: ").strip()
 pw1 = getpass.getpass("Neues Passwort: ")

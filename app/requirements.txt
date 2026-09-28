@@ -1,5 +1,5 @@
 # Getestete Versionen (Raspberry Pi OS Bookworm, Python 3.11). deploy/install.sh installiert sie
-# in /opt/raspicloud/venv.
+# in /opt/himbeerepi/venv.
 blinker==1.9.0
 click==8.5.0
 Flask==3.1.3

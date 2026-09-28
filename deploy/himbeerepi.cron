@@ -1,0 +1,10 @@
+# HimbeerePi - Cronjobs. Vorlage fuer /etc/cron.d/himbeerepi (install.sh kopiert sie).
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Stromverbrauch schaetzen (jede Minute, fuer die Stromkosten-Anzeige)
+* * * * *   himbeerepi  set -a; . /etc/himbeerepi/himbeerepi.env; set +a; /opt/himbeerepi/venv/bin/python3 /opt/himbeerepi/app/track_energy.py >/dev/null 2>&1
+# Taegliches Datenbank-Backup
+10 3 * * *  himbeerepi  /opt/himbeerepi/scripts/backup_db.sh
+# Dienst pruefen, bei zwei Fehlschlaegen in Folge neu starten
+*/5 * * * * root        /opt/himbeerepi/scripts/check_health.sh

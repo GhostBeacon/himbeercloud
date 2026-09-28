@@ -1,6 +1,6 @@
 """Rauchtest: Datenbank anlegen, anmelden, hochladen, Papierkorb, Speicherlimit.
 
-    RASPICLOUD_INSECURE_COOKIE=1 python -m unittest discover -s tests
+    HIMBEEREPI_INSECURE_COOKIE=1 python -m unittest discover -s tests
 """
 import io
 import os
@@ -10,23 +10,23 @@ import tempfile
 import time
 import unittest
 
-TMP = tempfile.mkdtemp(prefix='raspicloud-test-')
+TMP = tempfile.mkdtemp(prefix='himbeerepi-test-')
 os.environ.update({
-    'RASPICLOUD_DB': os.path.join(TMP, 'users.db'),
-    'RASPICLOUD_DATA_DIR': os.path.join(TMP, 'data'),
+    'HIMBEEREPI_DB': os.path.join(TMP, 'users.db'),
+    'HIMBEEREPI_DATA_DIR': os.path.join(TMP, 'data'),
     'SECRET_KEY': 'test',
-    'RASPICLOUD_INSECURE_COOKIE': '1',
+    'HIMBEEREPI_INSECURE_COOKIE': '1',
 })
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'app'))
 
 import manage  # noqa: E402
 
-manage.DB_PATH = os.environ['RASPICLOUD_DB']
+manage.DB_PATH = os.environ['HIMBEEREPI_DB']
 manage.init_db()
 
 from werkzeug.security import generate_password_hash  # noqa: E402
 
-_conn = sqlite3.connect(os.environ['RASPICLOUD_DB'])
+_conn = sqlite3.connect(os.environ['HIMBEEREPI_DB'])
 _conn.execute("INSERT INTO users (username, password_hash) VALUES ('anna', ?)",
               (generate_password_hash('ein-langes-passwort'),))
 _conn.execute("INSERT INTO users (username, password_hash, storage_quota_mb, show_system_stats) VALUES ('ben', ?, 1024, 0)",
@@ -66,7 +66,7 @@ class WebTest(unittest.TestCase):
     def test_upload_thumbnail_trash(self):
         r = self.client.post('/upload', data={'file': (jpeg(), 'bild.jpg')}, content_type='multipart/form-data')
         self.assertIn(r.status_code, (200, 302))
-        conn = sqlite3.connect(os.environ['RASPICLOUD_DB'])
+        conn = sqlite3.connect(os.environ['HIMBEEREPI_DB'])
         file_id = conn.execute("SELECT id FROM files WHERE original_name = 'bild.jpg'").fetchone()[0]
         conn.close()
         for _ in range(20):
@@ -86,7 +86,7 @@ class QuotaUserTest(unittest.TestCase):
         stats = client.get('/system_stats').get_json()
         self.assertIsNone(stats['backup_status'])
         # fremde Datei nicht abrufbar
-        conn = sqlite3.connect(os.environ['RASPICLOUD_DB'])
+        conn = sqlite3.connect(os.environ['HIMBEEREPI_DB'])
         row = conn.execute("SELECT f.id FROM files f JOIN users u ON u.id = f.user_id WHERE u.username = 'anna'").fetchone()
         conn.close()
         if row:

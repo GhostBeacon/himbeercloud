@@ -1,4 +1,4 @@
-# RaspiCloud
+# HimbeerePi
 
 Eine schlanke, selbst gehostete Cloud für Dateien und Fotos auf dem **Raspberry Pi**: Weboberfläche für Computer und Handy, mit Zwei-Faktor-Anmeldung. Die Daten bleiben bei dir: zum Start auf der SD-Karte, später auf einer eigenen Festplatte am Pi.
 
@@ -35,8 +35,8 @@ Gebaut mit Flask, Gunicorn und SQLite. Kein Docker, keine Datenbank-Server, kein
 
 ```bash
 sudo apt install -y git
-sudo git clone https://github.com/GhostBeacon/raspicloud.git /opt/raspicloud
-sudo /opt/raspicloud/deploy/setup.sh
+sudo git clone https://github.com/GhostBeacon/himbeercloud.git /opt/himbeerepi
+sudo /opt/himbeerepi/deploy/setup.sh
 ```
 
 **Ausführliche Schritt-für-Schritt-Anleitung** vom leeren Pi bis zum Zugriff von unterwegs, mit allen Stufen auch von Hand (Domain, Router, HTTPS, Firewall, Festplatten, Sicherung, Fehlerbehebung): **[INSTALL.md](INSTALL.md)**. Hier die Kurzfassung der Grundeinrichtung von Hand:
@@ -45,17 +45,17 @@ sudo /opt/raspicloud/deploy/setup.sh
 
 ```bash
 sudo apt install -y git
-sudo git clone https://github.com/GhostBeacon/raspicloud.git /opt/raspicloud
-sudo /opt/raspicloud/deploy/install.sh
+sudo git clone https://github.com/GhostBeacon/himbeercloud.git /opt/himbeerepi
+sudo /opt/himbeerepi/deploy/install.sh
 ```
 
-Das Skript installiert die Pakete, legt den Dienstbenutzer `raspicloud` an, erzeugt `/etc/raspicloud/raspicloud.env` mit einem zufälligen `SECRET_KEY`, richtet die Python-Umgebung, die Datenbank, den systemd-Dienst und die Cronjobs ein. Danach läuft die Cloud auf `127.0.0.1:5000`, die Dateien liegen unter `/srv/raspicloud`.
+Das Skript installiert die Pakete, legt den Dienstbenutzer `himbeerepi` an, erzeugt `/etc/himbeerepi/himbeerepi.env` mit einem zufälligen `SECRET_KEY`, richtet die Python-Umgebung, die Datenbank, den systemd-Dienst und die Cronjobs ein. Danach läuft die Cloud auf `127.0.0.1:5000`, die Dateien liegen unter `/srv/himbeerepi`.
 
 ### 2. Ersten Benutzer anlegen
 
 ```bash
-cd /opt/raspicloud/app
-sudo -u raspicloud ../venv/bin/python3 manage.py add-user
+cd /opt/himbeerepi/app
+sudo -u himbeerepi ../venv/bin/python3 manage.py add-user
 ```
 
 Benutzer ohne Speicherlimit sehen die Belegung des ganzen Speichers, Benutzer mit Limit nur ihr eigenes Kontingent. 2FA richtet jeder nach der Anmeldung selbst in der Weboberfläche ein.
@@ -64,55 +64,55 @@ Benutzer ohne Speicherlimit sehen die Belegung des ganzen Speichers, Benutzer mi
 
 ```bash
 sudo apt install -y caddy
-sudo cp /opt/raspicloud/deploy/Caddyfile.example /etc/caddy/Caddyfile
+sudo cp /opt/himbeerepi/deploy/Caddyfile.example /etc/caddy/Caddyfile
 sudo nano /etc/caddy/Caddyfile               # cloud.example.org durch die eigene Domain ersetzen
 sudo systemctl reload caddy
 ```
 
 Caddy holt das Zertifikat bei Let's Encrypt automatisch. Die Cloud selbst lauscht nur auf `127.0.0.1` und ist nie direkt erreichbar.
 
-Nur im Heimnetz ohne Domain und HTTPS: in `/etc/raspicloud/raspicloud.env` die Zeile `RASPICLOUD_INSECURE_COOKIE=1` ergänzen, sonst funktioniert die Anmeldung über `http://` nicht. Von außen erreichbar sollte die Cloud so nicht sein.
+Nur im Heimnetz ohne Domain und HTTPS: in `/etc/himbeerepi/himbeerepi.env` die Zeile `HIMBEEREPI_INSECURE_COOKIE=1` ergänzen, sonst funktioniert die Anmeldung über `http://` nicht. Von außen erreichbar sollte die Cloud so nicht sein.
 
 ### 4. Einstellungen
 
-Alles steht in `/etc/raspicloud/raspicloud.env` (Vorlage: [`deploy/raspicloud.env.example`](deploy/raspicloud.env.example)). Nach einer Änderung: `sudo systemctl restart raspicloud`.
+Alles steht in `/etc/himbeerepi/himbeerepi.env` (Vorlage: [`deploy/himbeerepi.env.example`](deploy/himbeerepi.env.example)). Nach einer Änderung: `sudo systemctl restart himbeerepi`.
 
 | Einstellung | Bedeutung |
 |---|---|
 | `SECRET_KEY` | Pflicht, geheimer Schlüssel für die Sitzungen (erzeugt `install.sh`) |
-| `RASPICLOUD_DATA_DIR` | Ordner für die Dateien, Standard `/srv/raspicloud` (mit Ausbau 1 ist dort die Festplatte eingehängt) |
-| `RASPICLOUD_DB` | Benutzer-Datenbank, Standard `/var/lib/raspicloud/users.db` |
-| `RASPICLOUD_BACKUP_MOUNT` | Ausbau 2: Backup-Platte, Standard `/srv/raspicloud-backup` |
-| `RASPICLOUD_POWER_PRICE` | Strompreis in EUR/kWh für die Kostenanzeige (Standard 0,35) |
-| `RASPICLOUD_HDD_WATTS` | pauschale Leistung externer Festplatten in Watt (0 ohne Platte, der Assistent setzt 7 je Platte) |
+| `HIMBEEREPI_DATA_DIR` | Ordner für die Dateien, Standard `/srv/himbeerepi` (mit Ausbau 1 ist dort die Festplatte eingehängt) |
+| `HIMBEEREPI_DB` | Benutzer-Datenbank, Standard `/var/lib/himbeerepi/users.db` |
+| `HIMBEEREPI_BACKUP_MOUNT` | Ausbau 2: Backup-Platte, Standard `/srv/himbeerepi-backup` |
+| `HIMBEEREPI_POWER_PRICE` | Strompreis in EUR/kWh für die Kostenanzeige (Standard 0,35) |
+| `HIMBEEREPI_HDD_WATTS` | pauschale Leistung externer Festplatten in Watt (0 ohne Platte, der Assistent setzt 7 je Platte) |
 | `NTFY_TOPIC`, `NTFY_SERVER` | optional: Push-Meldung nach jedem Backup |
 
 ## Aktualisieren
 
 ```bash
-cd /opt/raspicloud && sudo git pull
-sudo /opt/raspicloud/deploy/install.sh
+cd /opt/himbeerepi && sudo git pull
+sudo /opt/himbeerepi/deploy/install.sh
 ```
 
 Einstellungen, Datenbank und Dateien bleiben dabei erhalten.
 
 ## Verwaltung auf dem Pi
 
-Alle Befehle im Ordner `/opt/raspicloud/app`:
+Alle Befehle im Ordner `/opt/himbeerepi/app`:
 
 | Befehl | Zweck |
 |---|---|
-| `sudo -u raspicloud ../venv/bin/python3 manage.py add-user` | Benutzer anlegen |
-| `sudo -u raspicloud ../venv/bin/python3 manage.py list-users` | Benutzer auflisten |
-| `sudo -u raspicloud ../venv/bin/python3 reset_password.py` | Passwort neu setzen |
-| `sudo -u raspicloud ../venv/bin/python3 emergency_disable_2fa.py` | 2FA abschalten, wenn das Handy weg ist |
-| `sudo -u raspicloud ../venv/bin/python3 empty_trash_all.py` | Papierkorb aller Benutzer leeren |
+| `sudo -u himbeerepi ../venv/bin/python3 manage.py add-user` | Benutzer anlegen |
+| `sudo -u himbeerepi ../venv/bin/python3 manage.py list-users` | Benutzer auflisten |
+| `sudo -u himbeerepi ../venv/bin/python3 reset_password.py` | Passwort neu setzen |
+| `sudo -u himbeerepi ../venv/bin/python3 emergency_disable_2fa.py` | 2FA abschalten, wenn das Handy weg ist |
+| `sudo -u himbeerepi ../venv/bin/python3 empty_trash_all.py` | Papierkorb aller Benutzer leeren |
 | `bulk_import.py` | große Datenmengen direkt vom Pi importieren (Anleitung im Kopf der Datei) |
-| `journalctl -u raspicloud -f` | Log des Dienstes |
+| `journalctl -u himbeerepi -f` | Log des Dienstes |
 
 ## Datensicherung
 
-`scripts/backup_db.sh` sichert täglich um 3:10 Uhr die **Datenbank** (Benutzer, Ordner, Dateiliste) nach `/srv/raspicloud/backups`, prüft die Kopie und hebt 14 Tage auf. Die **hochgeladenen Dateien** werden erst mit **Ausbau 2** gesichert: Dann landet die Datenbank-Kopie zusätzlich auf der Backup-Platte, und jeden Sonntag werden alle Dateien nach `/srv/raspicloud-backup/dateien` gespiegelt. Wiederherstellen: [INSTALL.md, Abschnitt 14](INSTALL.md#14-datensicherung-und-wiederherstellung).
+`scripts/backup_db.sh` sichert täglich um 3:10 Uhr die **Datenbank** (Benutzer, Ordner, Dateiliste) nach `/srv/himbeerepi/backups`, prüft die Kopie und hebt 14 Tage auf. Die **hochgeladenen Dateien** werden erst mit **Ausbau 2** gesichert: Dann landet die Datenbank-Kopie zusätzlich auf der Backup-Platte, und jeden Sonntag werden alle Dateien nach `/srv/himbeerepi-backup/dateien` gespiegelt. Wiederherstellen: [INSTALL.md, Abschnitt 14](INSTALL.md#14-datensicherung-und-wiederherstellung).
 
 ## Aufbau
 
@@ -142,7 +142,7 @@ Mehr in [SECURITY.md](SECURITY.md).
 
 ```bash
 python3 -m venv venv && venv/bin/pip install -r app/requirements.txt
-export SECRET_KEY=test RASPICLOUD_INSECURE_COOKIE=1 RASPICLOUD_DB=$PWD/test.db RASPICLOUD_DATA_DIR=$PWD/testdata
+export SECRET_KEY=test HIMBEEREPI_INSECURE_COOKIE=1 HIMBEEREPI_DB=$PWD/test.db HIMBEEREPI_DATA_DIR=$PWD/testdata
 venv/bin/python3 app/manage.py add-user
 cd app && ../venv/bin/flask --app app run      # http://127.0.0.1:5000
 ```

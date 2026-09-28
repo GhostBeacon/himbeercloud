@@ -1,19 +1,19 @@
 """
 Verwaltung der Benutzer-Datenbank: Tabellen anlegen und Benutzer hinzufuegen.
 
-Verwendung (auf dem Pi, im Ordner /opt/raspicloud/app):
-    sudo -u raspicloud ../venv/bin/python3 manage.py init
+Verwendung (auf dem Pi, im Ordner /opt/himbeerepi/app):
+    sudo -u himbeerepi ../venv/bin/python3 manage.py init
         Legt alle Tabellen an (idempotent - vorhandene Daten bleiben unberuehrt).
-    sudo -u raspicloud ../venv/bin/python3 manage.py add-user
+    sudo -u himbeerepi ../venv/bin/python3 manage.py add-user
         Fragt Benutzername, Passwort und optionales Speicherlimit ab.
-    sudo -u raspicloud ../venv/bin/python3 manage.py list-users
-    sudo -u raspicloud ../venv/bin/python3 manage.py count-users
+    sudo -u himbeerepi ../venv/bin/python3 manage.py list-users
+    sudo -u himbeerepi ../venv/bin/python3 manage.py count-users
 
 Ohne Rueckfragen (Passwort kommt als erste Zeile ueber stdin, nie als Argument):
     ... manage.py add-user --username anna --password-stdin [--quota-gb 500] [--no-stats]
 
 Passwort zuruecksetzen: reset_password.py. 2FA im Notfall abschalten: emergency_disable_2fa.py.
-Die Datenbank liegt unter RASPICLOUD_DB (Standard /var/lib/raspicloud/users.db).
+Die Datenbank liegt unter HIMBEEREPI_DB (Standard /var/lib/himbeerepi/users.db).
 """
 import argparse
 import getpass
@@ -24,7 +24,7 @@ import sys
 
 from werkzeug.security import generate_password_hash
 
-DB_PATH = os.environ.get("RASPICLOUD_DB", "/var/lib/raspicloud/users.db")
+DB_PATH = os.environ.get("HIMBEEREPI_DB", "/var/lib/himbeerepi/users.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (

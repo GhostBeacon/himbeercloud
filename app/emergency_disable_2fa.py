@@ -5,13 +5,13 @@ sonst nicht mehr einloggen koennte. Erfordert Terminal-Zugriff auf den Pi (SSH),
 kein Sicherheitsloch fuer Fremde - nur fuer dich als Administrator gedacht.
 
 Verwendung:
-    cd /opt/raspicloud/app
-    sudo -u raspicloud ../venv/bin/python3 emergency_disable_2fa.py
+    cd /opt/himbeerepi/app
+    sudo -u himbeerepi ../venv/bin/python3 emergency_disable_2fa.py
 """
 import os
 import sqlite3
 
-DB_PATH = os.environ.get("RASPICLOUD_DB", "/var/lib/raspicloud/users.db")
+DB_PATH = os.environ.get("HIMBEEREPI_DB", "/var/lib/himbeerepi/users.db")
 
 username = input("Benutzername, fuer den 2FA deaktiviert werden soll: ").strip()
 

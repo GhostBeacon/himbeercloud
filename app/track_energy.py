@@ -6,9 +6,9 @@ from datetime import datetime
 
 # Pauschale Schaetzung fuer externe Festplatten (kein eigener Stromsensor vorhanden): 0 ohne
 # Platte, der Einrichtungsassistent setzt 7 W je Platte. Wird zur echten Pi-Messung dazugerechnet.
-HDD_WATTS = float(os.environ.get("RASPICLOUD_HDD_WATTS", "0"))
+HDD_WATTS = float(os.environ.get("HIMBEEREPI_HDD_WATTS", "0"))
 
-DB_PATH = os.environ.get("RASPICLOUD_DB", "/var/lib/raspicloud/users.db")
+DB_PATH = os.environ.get("HIMBEEREPI_DB", "/var/lib/himbeerepi/users.db")
 
 
 def get_pi_power_watts():

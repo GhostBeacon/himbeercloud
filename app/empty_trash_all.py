@@ -1,8 +1,8 @@
 import sqlite3
 import os
 
-DB_PATH = os.environ.get("RASPICLOUD_DB", "/var/lib/raspicloud/users.db")
-UPLOAD_FOLDER = os.environ.get("RASPICLOUD_DATA_DIR", "/srv/raspicloud")
+DB_PATH = os.environ.get("HIMBEEREPI_DB", "/var/lib/himbeerepi/users.db")
+UPLOAD_FOLDER = os.environ.get("HIMBEEREPI_DATA_DIR", "/srv/himbeerepi")
 THUMBNAIL_FOLDER = os.path.join(UPLOAD_FOLDER, "thumbnails")
 
 

@@ -1,25 +1,25 @@
 #!/bin/bash
 # Taegliches WAL-sicheres Backup der Cloud-Datenbank (Benutzer, Ordner, Dateiliste).
-# Laeuft per Cron (deploy/raspicloud.cron) als Benutzer raspicloud. Ziel:
-#   <RASPICLOUD_DATA_DIR>/backups             immer
-#   <RASPICLOUD_BACKUP_MOUNT>/db_backups      zusaetzlich mit Backup-Festplatte (Ausbau 2)
+# Laeuft per Cron (deploy/himbeerepi.cron) als Benutzer himbeerepi. Ziel:
+#   <HIMBEEREPI_DATA_DIR>/backups             immer
+#   <HIMBEEREPI_BACKUP_MOUNT>/db_backups      zusaetzlich mit Backup-Festplatte (Ausbau 2)
 # Sicherungen aelter als 14 Tage werden geloescht.
 #
 # Es wird nicht nur geprueft, ob "sqlite3 .backup" fehlerfrei durchlaeuft, sondern zusaetzlich,
 # ob die ENTSTANDENE Kopie selbst eine gueltige Datenbank ist (PRAGMA integrity_check).
 #
 # Hinweis: Gesichert wird nur die Datenbank. Die hochgeladenen Dateien spiegelt bei Ausbau 2
-# ein eigener woechentlicher Cronjob (/etc/cron.d/raspicloud-mirror) auf die Backup-Festplatte.
+# ein eigener woechentlicher Cronjob (/etc/cron.d/himbeerepi-mirror) auf die Backup-Festplatte.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/notify_ntfy.sh"
 
-ENV_FILE="${RASPICLOUD_ENV_FILE:-/etc/raspicloud/raspicloud.env}"
+ENV_FILE="${HIMBEEREPI_ENV_FILE:-/etc/himbeerepi/himbeerepi.env}"
 read_env() { [ -r "$ENV_FILE" ] && sed -n "s/^$1=//p" "$ENV_FILE" | head -n 1 | tr -d '"'"'"; }
 
-DB_PATH="$(read_env RASPICLOUD_DB)";                DB_PATH="${DB_PATH:-/var/lib/raspicloud/users.db}"
-DATA_DIR="$(read_env RASPICLOUD_DATA_DIR)";         DATA_DIR="${DATA_DIR:-/srv/raspicloud}"
-BACKUP_MOUNT="$(read_env RASPICLOUD_BACKUP_MOUNT)"
+DB_PATH="$(read_env HIMBEEREPI_DB)";                DB_PATH="${DB_PATH:-/var/lib/himbeerepi/users.db}"
+DATA_DIR="$(read_env HIMBEEREPI_DATA_DIR)";         DATA_DIR="${DATA_DIR:-/srv/himbeerepi}"
+BACKUP_MOUNT="$(read_env HIMBEEREPI_BACKUP_MOUNT)"
 
 BACKUP_DIR_PRIMARY="$DATA_DIR/backups"
 LOG_FILE="$BACKUP_DIR_PRIMARY/backup_db.log"
@@ -61,12 +61,12 @@ if [ "$BACKUP_OK" = true ]; then
     find "$BACKUP_DIR_PRIMARY" -maxdepth 1 -name "*.failed" -mtime +7 -delete
 
     echo "$(date): Backup erfolgreich abgeschlossen, Integritaet geprueft.${SECONDARY_NOTE}" >> "$LOG_FILE"
-    notify_backup "RaspiCloud: Datenbank-Backup OK" \
+    notify_backup "HimbeerePi: Datenbank-Backup OK" \
         "Tägliches DB-Backup erfolgreich, Integrität geprüft.${SECONDARY_NOTE}" \
         "default" "white_check_mark"
 else
     echo "$(date): FEHLGESCHLAGEN - $FAILURE_REASON" >> "$LOG_FILE"
-    notify_backup "RaspiCloud: Datenbank-Backup FEHLGESCHLAGEN" \
+    notify_backup "HimbeerePi: Datenbank-Backup FEHLGESCHLAGEN" \
         "Das tägliche DB-Backup ist fehlgeschlagen: ${FAILURE_REASON}. Log prüfen: $LOG_FILE" \
         "high" "rotating_light,warning"
     # Fehlerhafte Kopie zur Fehlersuche behalten, aber nicht mit gueltigen Sicherungen verwechseln
