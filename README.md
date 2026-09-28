@@ -104,8 +104,8 @@ Alle Befehle im Ordner `/opt/himbeerepi/app`:
 |---|---|
 | `sudo -u himbeerepi ../venv/bin/python3 manage.py add-user` | Benutzer anlegen |
 | `sudo -u himbeerepi ../venv/bin/python3 manage.py list-users` | Benutzer auflisten |
-| `sudo -u himbeerepi ../venv/bin/python3 reset_password.py` | Passwort neu setzen |
-| `sudo -u himbeerepi ../venv/bin/python3 emergency_disable_2fa.py` | 2FA abschalten, wenn das Handy weg ist |
+| `sudo -u himbeerepi ../venv/bin/python3 reset_password.py` | Passwort neu setzen (meldet alle Geräte ab) |
+| `sudo -u himbeerepi ../venv/bin/python3 emergency_disable_2fa.py` | 2FA abschalten, wenn das Handy weg ist (meldet alle Geräte ab) |
 | `sudo -u himbeerepi ../venv/bin/python3 empty_trash_all.py` | Papierkorb aller Benutzer leeren |
 | `bulk_import.py` | große Datenmengen direkt vom Pi importieren (Anleitung im Kopf der Datei) |
 | `journalctl -u himbeerepi -f` | Log des Dienstes |
@@ -132,6 +132,8 @@ tests/            Rauchtest (python -m unittest discover -s tests)
 
 - Anmeldung mit Passwort und optional TOTP; 5 Fehlversuche pro IP sperren 15 Minuten (falsche 2FA-Codes zählen mit)
 - CSRF-Schutz, sichere Cookies, Abmeldung nach 12 Stunden Inaktivität
+- „Alle anderen Geräte abmelden“ per Knopfdruck; Passwort-Reset und Notfall-2FA-Abschaltung melden alle Geräte ab
+- Schutz-Header gegen Einbetten in fremde Seiten (Clickjacking), HSTS bei HTTPS
 - Jede Datenbankabfrage ist auf den angemeldeten Benutzer beschränkt
 - Hochgeladene HTML-, SVG- und ähnliche Dateien werden nur als Download ausgeliefert, nie im Browser ausgeführt
 - Der Dienst läuft als eigener Benutzer ohne Login-Shell und darf nur in Datenbank- und Datenordner schreiben

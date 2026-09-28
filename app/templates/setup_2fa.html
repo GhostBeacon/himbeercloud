@@ -226,6 +226,15 @@ Geht das Scannen nicht? Manuell eingeben: <br><strong style="color: var(--headin
 </div>
 {% endif %}
 
+<div style="border-top: 1px solid var(--border); margin-top: 22px; padding-top: 16px;">
+<label>Angemeldete Geräte</label>
+<div class="subtitle" style="text-align:left; margin-bottom: 10px;">Meldet alle anderen Browser und Geräte ab, z. B. nach einem verlorenen Handy. Dieses Gerät bleibt angemeldet.</div>
+<form method="post" action="/logout_others" onsubmit="return confirm('Alle anderen Geräte abmelden?');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button type="submit" style="background: #64748b;">Alle anderen Geräte abmelden</button>
+</form>
+</div>
+
 </div>
 
 <script>

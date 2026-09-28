@@ -254,7 +254,9 @@ Jeder Benutzer sollte das direkt nach der ersten Anmeldung tun:
 
 Ab jetzt fragt die Cloud nach dem Passwort zusätzlich nach dem Code.
 
-**Handy verloren?** Auf dem Pi:
+**Andere Geräte abmelden:** Unter **2FA → Alle anderen Geräte abmelden** werden alle anderen Browser und Geräte abgemeldet, das aktuelle bleibt angemeldet. Das passiert auch automatisch, wenn 2FA eingeschaltet oder das Passwort mit `reset_password.py` neu gesetzt wird.
+
+**Handy verloren?** Auf dem Pi (schaltet 2FA ab und meldet alle Geräte ab):
 
 ```bash
 cd /opt/himbeerepi/app

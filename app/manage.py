@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS users (
     display_name TEXT,                     -- Anzeigename in der Kopfzeile (optional)
     show_system_stats INTEGER NOT NULL DEFAULT 1,  -- Pi-Status-Seitenleiste sichtbar
     totp_secret TEXT,
-    totp_enabled INTEGER NOT NULL DEFAULT 0
+    totp_enabled INTEGER NOT NULL DEFAULT 0,
+    session_version INTEGER NOT NULL DEFAULT 1     -- erhoehen = alle Sitzungen abmelden
 );
 
 -- Keine Fremdschluessel auf parent_id/folder_id: Papierkorb-Leeren loescht Ordner in
@@ -82,9 +83,17 @@ def connect():
     return conn
 
 
+def _migrate(conn):
+    """Spalten nachruesten, die aeltere Datenbanken noch nicht haben."""
+    columns = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if "session_version" not in columns:
+        conn.execute("ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1")
+
+
 def init_db():
     conn = connect()
     conn.executescript(SCHEMA)
+    _migrate(conn)
     conn.commit()
     conn.close()
     print(f"Datenbank bereit: {DB_PATH}")
@@ -160,6 +169,7 @@ def count_users():
 def init_db_quiet():
     conn = connect()
     conn.executescript(SCHEMA)
+    _migrate(conn)
     conn.commit()
     conn.close()
 

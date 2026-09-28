@@ -29,8 +29,13 @@ if not row[1]:
     exit(0)
 
 conn.execute("UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE username = ?", (username,))
+# Alle Anmeldungen beenden - ein verlorenes Handy war vielleicht noch angemeldet
+try:
+    conn.execute("UPDATE users SET session_version = session_version + 1 WHERE username = ?", (username,))
+except sqlite3.OperationalError:  # Datenbank noch ohne Spalte: Dienst einmal neu starten
+    pass
 conn.commit()
 conn.close()
 
-print(f"Fertig. 2FA fuer '{username}' wurde deaktiviert. Login ist wieder nur mit Passwort moeglich.")
+print(f"Fertig. 2FA fuer '{username}' wurde deaktiviert, alle Geraete sind abgemeldet. Login ist wieder nur mit Passwort moeglich.")
 print("Falls gewuenscht, kann 2FA jederzeit ueber /setup_2fa erneut eingerichtet werden.")

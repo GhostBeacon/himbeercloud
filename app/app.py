@@ -49,6 +49,8 @@ csrf = CSRFProtect(app)
 # das Session-Cookie soll deshalb nie unverschluesselt uebertragen werden.
 # Nur fuer lokale Tests ohne HTTPS: HIMBEEREPI_INSECURE_COOKIE=1.
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('HIMBEEREPI_INSECURE_COOKIE') != '1'
+# Cookie bei Anfragen von fremden Seiten nicht mitschicken (zusaetzlich zum CSRF-Token)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # Begrenzter Arbeiter-Pool fuer die Thumbnail-Erstellung im Hintergrund. Ohne Begrenzung wuerde
 # jede hochgeladene Datei einen komplett neuen, unbegrenzten Thread starten (siehe fruehere Version) -
@@ -326,12 +328,48 @@ def get_disk_info(conn):
         return disk_data
 
 
+def ensure_session_version_column():
+    """Spalte session_version nachruesten (Datenbanken aus aelteren Versionen). Mehrere
+    Gunicorn-Worker laufen hier gleichzeitig durch - eine schon angelegte Spalte ist kein Fehler."""
+    conn = get_db_connection()
+    try:
+        columns = [r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()]
+        if columns and 'session_version' not in columns:
+            try:
+                conn.execute('ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1')
+                conn.commit()
+            except sqlite3.OperationalError as e:
+                if 'duplicate column name' not in str(e):
+                    raise
+    finally:
+        conn.close()
+
+
+ensure_session_version_column()
+
+
+def start_session(user):
+    """Meldet den Benutzer an und merkt sich seine Sitzungsnummer. Wird die Nummer in der
+    Datenbank erhoeht (Passwort zurueckgesetzt, 2FA eingeschaltet, "andere Geraete abmelden"),
+    sind alle Sitzungen mit der alten Nummer ungueltig - siehe load_user()."""
+    login_user(User(user['id'], user['username'], user['storage_quota_mb'], user['display_name'], user['show_system_stats']))
+    session['sv'] = user['session_version']
+
+
+def bump_session_version(conn, user_id):
+    """Beendet alle Sitzungen des Benutzers. Gibt die neue Nummer zurueck."""
+    conn.execute('UPDATE users SET session_version = session_version + 1 WHERE id = ?', (user_id,))
+    conn.commit()
+    return conn.execute('SELECT session_version FROM users WHERE id = ?', (user_id,)).fetchone()[0]
+
+
 @login_manager.user_loader
 def load_user(user_id):
     conn = get_db_connection()
     user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
     conn.close()
-    if user:
+    # Sitzung nur gueltig, solange ihre Nummer zur aktuellen des Benutzers passt
+    if user and session.get('sv') == user['session_version']:
         return User(user['id'], user['username'], user['storage_quota_mb'], user['display_name'], user['show_system_stats'])
     return None
 
@@ -457,7 +495,9 @@ def build_folder_tree(all_folders):
 
 
 def get_or_create_subfolder(conn, name, parent_id, user_id):
-    """Sucht einen Unterordner mit gegebenem Namen unter parent_id, legt ihn bei Bedarf neu an."""
+    """Sucht einen Unterordner mit gegebenem Namen unter parent_id, legt ihn bei Bedarf neu an.
+    Der Name kommt aus Ordner- und ZIP-Uploads und wird deshalb bereinigt."""
+    name = sanitize_display_name(name) or '_'
     if parent_id is None:
         row = conn.execute(
             'SELECT id FROM folders WHERE name = ? AND parent_id IS NULL AND user_id = ? AND deleted_at IS NULL',
@@ -719,6 +759,14 @@ def add_no_cache_headers(response):
     # Browser sollen den Content-Type nicht "erraten" (eine als .jpg hochgeladene HTML-Datei
     # bleibt so ein kaputtes Bild statt einer Webseite).
     response.headers['X-Content-Type-Options'] = 'nosniff'
+    # Nicht in fremde Seiten einbetten lassen (Schutz gegen untergeschobene Klicks)
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Content-Security-Policy'] = "frame-ancestors 'none'"
+    # Adressen der Cloud (Ordner, Dateinamen in der Suche) nicht an fremde Seiten weitergeben
+    response.headers['Referrer-Policy'] = 'same-origin'
+    # Nur bei Zugang ueber HTTPS: Browser merkt sich ein Jahr lang, die Cloud nie per HTTP aufzurufen
+    if request.is_secure:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000'
     if response.content_type and response.content_type.startswith('text/html'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
@@ -783,8 +831,7 @@ def login():
 
             clear_failed_attempts(conn, ip_address)
             conn.close()
-            user_obj = User(user['id'], user['username'], user['storage_quota_mb'], user['display_name'], user['show_system_stats'])
-            login_user(user_obj)
+            start_session(user)
             return redirect(url_for('index'))
         else:
             record_failed_attempt(conn, ip_address)
@@ -828,8 +875,7 @@ def verify_2fa():
                 clear_failed_attempts(conn, ip_address)
                 conn.close()
                 session.pop('pending_2fa_user_id', None)
-                user_obj = User(user['id'], user['username'], user['storage_quota_mb'], user['display_name'], user['show_system_stats'])
-                login_user(user_obj)
+                start_session(user)
                 return redirect(url_for('index'))
 
         record_failed_attempt(conn, ip_address)
@@ -861,6 +907,9 @@ def setup_2fa():
             conn.execute('UPDATE users SET totp_secret = ?, totp_enabled = 1 WHERE id = ?',
                          (secret, current_user.id))
             conn.commit()
+            # Andere Sitzungen abmelden: Wer nur das Passwort kannte, soll nicht ueber eine
+            # bestehende Sitzung an der neuen 2FA vorbeikommen. Diese Sitzung bleibt angemeldet.
+            session['sv'] = bump_session_version(conn, current_user.id)
             conn.close()
             session.pop('pending_totp_secret', None)
             flash('Zwei-Faktor-Authentifizierung erfolgreich aktiviert.')
@@ -914,6 +963,18 @@ def disable_2fa():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+
+@app.route('/logout_others', methods=['POST'])
+@login_required
+def logout_others():
+    """Meldet alle anderen Browser und Geraete ab (z.B. nach einem verlorenen Handy).
+    Diese Sitzung bekommt die neue Nummer und bleibt angemeldet."""
+    conn = get_db_connection()
+    session['sv'] = bump_session_version(conn, current_user.id)
+    conn.close()
+    flash('Alle anderen Geräte wurden abgemeldet.')
+    return redirect(url_for('setup_2fa'))
 
 
 @app.route('/')
@@ -1587,11 +1648,15 @@ def move_file(file_id):
 
 
 def sanitize_display_name(name):
-    """Bereinigt einen vom Nutzer eingegebenen Anzeigenamen (Umbenennen). Wird NICHT als
-    Dateisystempfad genutzt (physische Dateien behalten ihren UUID-Namen), daher reicht
-    eine leichte Bereinigung statt des strengen secure_filename()."""
+    """Bereinigt einen Anzeigenamen (Umbenennen, neue Ordner, Ordner aus ZIP- und Ordner-Uploads).
+    Wird NICHT als Dateisystempfad genutzt (physische Dateien behalten ihren UUID-Namen), daher
+    reicht eine leichte Bereinigung statt des strengen secure_filename(). "." und ".." werden
+    ersetzt - sie landen sonst als Pfadteil im ZIP-Download ("../..") und koennten beim
+    Entpacken mit alten Programmen ausserhalb des Zielordners schreiben."""
     name = (name or '').strip()
     name = name.replace('/', '-').replace('\\', '-')
+    if name in ('.', '..'):
+        name = name.replace('.', '_')
     return name[:255]
 
 
@@ -1726,7 +1791,7 @@ def bulk_download():
             if f:
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], f['filename'])
                 if os.path.exists(filepath):
-                    zf.write(filepath, arcname=f['original_name'])
+                    zf.write(filepath, arcname=sanitize_display_name(f['original_name']) or '_')
 
         def add_folder_to_zip(folder_id, arc_prefix):
             files_here = conn.execute('SELECT * FROM files WHERE folder_id = ? AND user_id = ? AND deleted_at IS NULL',
@@ -1734,18 +1799,18 @@ def bulk_download():
             for f in files_here:
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], f['filename'])
                 if os.path.exists(filepath):
-                    zf.write(filepath, arcname=arc_prefix + '/' + f['original_name'])
+                    zf.write(filepath, arcname=arc_prefix + '/' + (sanitize_display_name(f['original_name']) or '_'))
             subfolders = conn.execute('SELECT * FROM folders WHERE parent_id = ? AND user_id = ? AND deleted_at IS NULL',
                                       (folder_id, current_user.id)).fetchall()
             for sub in subfolders:
-                add_folder_to_zip(sub['id'], arc_prefix + '/' + sub['name'])
+                add_folder_to_zip(sub['id'], arc_prefix + '/' + (sanitize_display_name(sub['name']) or '_'))
 
         for folder_id_str in folder_ids:
             fid = int(folder_id_str)
             folder = conn.execute('SELECT * FROM folders WHERE id = ? AND user_id = ?',
                                   (fid, current_user.id)).fetchone()
             if folder:
-                add_folder_to_zip(fid, folder['name'])
+                add_folder_to_zip(fid, sanitize_display_name(folder['name']) or '_')
 
     conn.close()
     zip_buffer.seek(0)

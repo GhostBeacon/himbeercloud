@@ -39,7 +39,12 @@ if not row:
     exit(1)
 
 conn.execute("UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, username))
+# Alle bestehenden Anmeldungen beenden - wer das alte Passwort kannte, fliegt raus
+try:
+    conn.execute("UPDATE users SET session_version = session_version + 1 WHERE username = ?", (username,))
+except sqlite3.OperationalError:  # Datenbank noch ohne Spalte: Dienst einmal neu starten
+    print("Hinweis: bestehende Sitzungen konnten nicht beendet werden (Dienst neu starten).")
 conn.commit()
 conn.close()
 
-print(f"Fertig. Passwort fuer '{username}' wurde erfolgreich aktualisiert.")
+print(f"Fertig. Passwort fuer '{username}' wurde erfolgreich aktualisiert. Alle Geraete sind abgemeldet.")
