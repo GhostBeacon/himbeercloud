@@ -147,6 +147,34 @@ venv/bin/python3 app/manage.py add-user
 cd app && ../venv/bin/flask --app app run      # http://127.0.0.1:5000
 ```
 
+## Verwendete Software
+
+HimbeerePi enthält selbst keinen fremden Code. Die folgenden Programme und Pakete werden bei der Installation aus den offiziellen Quellen (PyPI bzw. den Paketquellen von Raspberry Pi OS) auf den Pi geladen und stehen unter ihren eigenen Lizenzen:
+
+| Python-Paket | Zweck | Lizenz |
+|---|---|---|
+| Flask, Werkzeug, Jinja2, click, itsdangerous, MarkupSafe | Web-Anwendung | BSD-3-Clause |
+| Flask-WTF, WTForms | Formulare, CSRF-Schutz | BSD-3-Clause |
+| Flask-Login | Anmeldung und Sitzungen | MIT |
+| gunicorn | Anwendungsserver | MIT |
+| blinker | Ereignisse innerhalb von Flask | MIT |
+| PyOTP | Zwei-Faktor-Codes (TOTP) | MIT |
+| qrcode | QR-Code für die 2FA-Einrichtung | BSD |
+| Pillow | Vorschaubilder | MIT-CMU |
+| pillow-heif | iPhone-Fotos (HEIC); bringt libheif und libde265 (LGPL-3.0) sowie x265 (GPL-2.0) mit | BSD-3-Clause |
+| psutil | Pi-Status (CPU, RAM, Durchsatz) | BSD-3-Clause |
+
+| Systemprogramm | Zweck | Lizenz |
+|---|---|---|
+| Python, SQLite | Laufzeit, Datenbank | PSF, gemeinfrei |
+| poppler-utils | PDF-Vorschau | GPL-2.0 |
+| exiftool | Bilddetails, RAW-Vorschau | Artistic / GPL |
+| dcraw | RAW-Vorschau (Rückfall) | frei, eigene Lizenz |
+| Caddy | HTTPS und Reverse Proxy | Apache-2.0 |
+| ufw, parted, rsync, whiptail | Firewall, Festplatten, Spiegelung, Einrichtungsassistent | GPL |
+
+HimbeerePi ruft diese Programme nur auf und gibt sie nicht selbst weiter. Wer HimbeerePi zusammen mit ihnen verteilt (z. B. als fertiges SD-Karten-Image), muss deren Lizenzbedingungen beachten.
+
 ## Lizenz
 
 [MIT](LICENSE)
