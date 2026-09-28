@@ -1,0 +1,3 @@
+# Seitenvorlagen (HTML mit eingebettetem CSS/JS) nicht fuer die Sprachstatistik von GitHub
+# zaehlen - sonst erscheint das Projekt als "HTML" statt als Python-Anwendung.
+app/templates/*.html linguist-detectable=false
