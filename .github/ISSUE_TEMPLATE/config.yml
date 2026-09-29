@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Sicherheitslücke melden
+    url: https://github.com/GhostBeacon/himbeercloud/security/advisories/new
+    about: Bitte privat melden, nicht als öffentliches Issue.
+  - name: Installationsanleitung
+    url: https://github.com/GhostBeacon/himbeercloud/blob/main/INSTALL.md
+    about: Schritt für Schritt, mit Fehlerbehebung am Ende (Abschnitt 16).

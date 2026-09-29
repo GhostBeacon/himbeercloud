@@ -1,0 +1,62 @@
+name: Fehler melden
+description: Etwas funktioniert nicht wie beschrieben
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Danke für die Meldung! **Sicherheitslücken bitte nicht hier**, sondern privat über *Security → Report a vulnerability*.
+        Bitte Domain, IP-Adressen, Benutzernamen, ntfy-Topic und `SECRET_KEY` in Protokollen unkenntlich machen.
+  - type: textarea
+    id: was
+    attributes:
+      label: Was ist passiert?
+      description: Was hast du erwartet, was ist stattdessen passiert?
+    validations:
+      required: true
+  - type: textarea
+    id: schritte
+    attributes:
+      label: Schritte zum Nachstellen
+      placeholder: |
+        1. Einrichtungsassistent gestartet, „Ausbau 1“ gewählt
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: stufe
+    attributes:
+      label: Ausbaustufe
+      options:
+        - Grundeinrichtung (SD-Karte)
+        - Ausbau 1 (Speicher-Festplatte)
+        - Ausbau 2 (Backup-Festplatte)
+        - noch nicht installiert
+    validations:
+      required: true
+  - type: dropdown
+    id: zugang
+    attributes:
+      label: Zugang
+      options:
+        - Domain mit HTTPS
+        - Nur im Heimnetz
+        - weiß nicht / nicht eingerichtet
+  - type: input
+    id: system
+    attributes:
+      label: Pi-Modell und Betriebssystem
+      placeholder: z. B. Raspberry Pi 5, 8 GB, Raspberry Pi OS Bookworm 64 Bit
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: HimbeerePi-Version
+      description: Ausgabe von `cat /opt/himbeerepi/VERSION`
+  - type: textarea
+    id: log
+    attributes:
+      label: Protokoll
+      description: z. B. `sudo journalctl -u himbeerepi -n 50 --no-pager` oder `tail -n 30 /var/log/himbeerepi-setup.log`
+      render: text

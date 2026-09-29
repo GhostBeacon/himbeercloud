@@ -141,7 +141,7 @@ tests/            Rauchtest (python -m unittest discover -s tests)
 - Hochgeladene HTML-, SVG- und ähnliche Dateien werden nur als Download ausgeliefert, nie im Browser ausgeführt
 - Der Dienst läuft als eigener Benutzer ohne Login-Shell und darf nur in Datenbank- und Datenordner schreiben
 
-Mehr in [SECURITY.md](SECURITY.md).
+Mehr in [SECURITY.md](SECURITY.md). Mitmachen: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Selbst ausprobieren (ohne Pi)
 
