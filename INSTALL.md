@@ -339,8 +339,10 @@ sudo systemctl restart himbeerepi
 Wöchentliche Spiegelung aller Dateien (sonntags 2 Uhr):
 
 ```bash
-echo '0 2 * * 0 root mountpoint -q /srv/himbeerepi-backup && rsync -a --delete --exclude=/lost+found --exclude=/tmp_uploads /srv/himbeerepi/ /srv/himbeerepi-backup/dateien/' | sudo tee /etc/cron.d/himbeerepi-mirror
+echo '0 2 * * 0 root /opt/himbeerepi/scripts/mirror_files.sh >> /var/log/himbeerepi-mirror.log 2>&1' | sudo tee /etc/cron.d/himbeerepi-mirror
 ```
+
+Das Skript spiegelt nur, wenn beide Platten eingehängt sind und die Dateien aus der Datenbank wirklich im Datenordner liegen. Fehlt die Speicher-Platte, bricht es ab (mit Push-Meldung, falls eingerichtet), statt die Sicherung zu leeren. Protokoll: `/var/log/himbeerepi-mirror.log`.
 
 Am besten liegt eine weitere Kopie außer Haus, zum Beispiel eine Platte, die du ab und zu tauschst.
 

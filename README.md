@@ -130,11 +130,14 @@ tests/            Rauchtest (python -m unittest discover -s tests)
 
 ## Sicherheit
 
-- Anmeldung mit Passwort und optional TOTP; 5 Fehlversuche pro IP sperren 15 Minuten (falsche 2FA-Codes zählen mit)
+- Anmeldung mit Passwort und optional TOTP; 5 Fehlversuche pro IP oder 20 pro Benutzername sperren 15 Minuten (falsche 2FA-Codes zählen mit)
 - CSRF-Schutz, sichere Cookies, Abmeldung nach 12 Stunden Inaktivität
 - „Alle anderen Geräte abmelden“ per Knopfdruck; Passwort-Reset und Notfall-2FA-Abschaltung melden alle Geräte ab
 - Schutz-Header gegen Einbetten in fremde Seiten (Clickjacking), HSTS bei HTTPS
-- Jede Datenbankabfrage ist auf den angemeldeten Benutzer beschränkt
+- Jede Datenbankabfrage ist auf den angemeldeten Benutzer beschränkt; fremde Ordner sind weder sichtbar noch als Ziel nutzbar
+- Abmelden nur per Formular (kein Abmelden über fremde Links), Weiterleitungen nur innerhalb der Cloud
+- ZIP-Dateien werden stückweise entpackt und nur, wenn genug Platz frei ist
+- Die Spiegelung auf die Backup-Platte bricht ab, wenn die Speicher-Platte fehlt, statt die Sicherung zu leeren
 - Hochgeladene HTML-, SVG- und ähnliche Dateien werden nur als Download ausgeliefert, nie im Browser ausgeführt
 - Der Dienst läuft als eigener Benutzer ohne Login-Shell und darf nur in Datenbank- und Datenordner schreiben
 

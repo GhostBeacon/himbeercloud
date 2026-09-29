@@ -168,5 +168,122 @@ class DotDotTest(unittest.TestCase):
                 self.assertNotIn('..', name.split('/'), name)
 
 
+class RedirectLogoutTest(unittest.TestCase):
+    def test_only_internal_redirects(self):
+        client = login_client()
+        for target in ('https://boese.example.com/', '//boese.example.com/', '/\\boese.example.com/', 'javascript:alert(1)'):
+            r = client.post('/bulk_delete', data={'redirect_to': target})
+            self.assertEqual(r.status_code, 204, target)
+        r = client.post('/bulk_delete', data={'redirect_to': '/trash'})
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(r.headers['Location'].endswith('/trash'))
+
+    def test_logout_only_by_post(self):
+        client = login_client()
+        self.assertEqual(client.get('/logout').status_code, 405)
+        self.assertEqual(client.get('/').status_code, 200)
+        self.assertEqual(client.post('/logout').status_code, 302)
+        self.assertEqual(client.get('/').status_code, 302)
+
+
+def folder_of(username, name):
+    conn = sqlite3.connect(os.environ['HIMBEEREPI_DB'])
+    row = conn.execute("SELECT f.id FROM folders f JOIN users u ON u.id = f.user_id "
+                       "WHERE u.username = ? AND f.name = ?", (username, name)).fetchone()
+    conn.close()
+    return row[0]
+
+
+class ForeignFolderTest(unittest.TestCase):
+    def test_no_access_to_foreign_folders(self):
+        ben, anna = login_client('ben'), login_client()
+        ben.post('/create_folder', data={'folder_name': 'Bens Ordner'})
+        fid = folder_of('ben', 'Bens Ordner')
+        self.assertEqual(anna.get(f'/folder/{fid}').status_code, 404)
+        self.assertEqual(anna.get('/folder/999999').status_code, 404)
+        r = anna.post('/upload', data={'file': (io.BytesIO(b'x'), 'fremd.txt'), 'folder_id': str(fid)},
+                      content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 404)
+        r = anna.post('/upload', data={'file': (io.BytesIO(b'x'), 'fremd.txt'), 'folder_id': 'abc'},
+                      content_type='multipart/form-data')
+        self.assertEqual(r.status_code, 404)
+        self.assertEqual(anna.post('/create_folder', data={'folder_name': 'unter', 'parent_id': str(fid)}).status_code, 404)
+        conn = sqlite3.connect(os.environ['HIMBEEREPI_DB'])
+        self.assertEqual(conn.execute("SELECT COUNT(*) FROM files WHERE folder_id = ? AND user_id = 1", (fid,)).fetchone()[0], 0)
+        self.assertEqual(conn.execute("SELECT COUNT(*) FROM folders WHERE parent_id = ?", (fid,)).fetchone()[0], 0)
+        conn.close()
+
+    def test_purge_keeps_other_users_files(self):
+        ben = login_client('ben')
+        ben.post('/create_folder', data={'folder_name': 'Wird geloescht'})
+        fid = folder_of('ben', 'Wird geloescht')
+        # Altbestand: Annas Datei haengt (noch aus der Zeit vor der Pruefung) in Bens Ordner
+        conn = sqlite3.connect(os.environ['HIMBEEREPI_DB'])
+        conn.execute("INSERT INTO files (filename, original_name, size_mb, folder_id, user_id) VALUES ('x_alt.txt', 'alt.txt', 0, ?, 1)", (fid,))
+        conn.commit()
+        ben.post(f'/delete_folder/{fid}')
+        ben.post(f'/delete_permanently/folder/{fid}')
+        self.assertIsNone(conn.execute("SELECT id FROM folders WHERE id = ?", (fid,)).fetchone())
+        self.assertIsNotNone(conn.execute("SELECT id FROM files WHERE filename = 'x_alt.txt'").fetchone())
+        conn.close()
+
+
+class ZipImportTest(unittest.TestCase):
+    def zip_upload(self, client, name, content):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(name, content)
+        buf.seek(0)
+        return client.post('/upload', data={'file': (buf, 'paket.zip'), 'extract_zip': '1'}, content_type='multipart/form-data')
+
+    def test_zip_extracted_completely(self):
+        content = os.urandom(3 * 1024 * 1024)
+        self.assertEqual(self.zip_upload(login_client(), 'gross/zufall.bin', content).status_code, 302)
+        conn = sqlite3.connect(os.environ['HIMBEEREPI_DB'])
+        filename = conn.execute("SELECT filename FROM files WHERE original_name = 'zufall.bin'").fetchone()[0]
+        conn.close()
+        with open(os.path.join(os.environ['HIMBEEREPI_DATA_DIR'], filename), 'rb') as f:
+            self.assertEqual(f.read(), content)
+
+    def test_zip_rejected_without_free_space(self):
+        from collections import namedtuple
+        from unittest import mock
+        usage = namedtuple('usage', 'total used free')
+        before = set(os.listdir(os.environ['HIMBEEREPI_DATA_DIR']))
+        with mock.patch.object(cloud.shutil, 'disk_usage', return_value=usage(0, 0, 100 * 1024 * 1024)):
+            r = self.zip_upload(login_client(), 'nullen.bin', b'\0' * (1024 * 1024))
+        self.assertEqual(r.status_code, 507)
+        self.assertIn('Nicht genug freier Speicher'.encode(), r.data)
+        self.assertEqual(set(os.listdir(os.environ['HIMBEEREPI_DATA_DIR'])), before)
+
+
+class AccountLockTest(unittest.TestCase):
+    def test_lock_per_account_across_addresses(self):
+        conn = sqlite3.connect(os.environ['HIMBEEREPI_DB'])
+        conn.execute("INSERT INTO users (username, password_hash) VALUES ('dora', ?)", (generate_password_hash('doras-passwort-123'),))
+        conn.commit()
+        conn.close()
+        client = cloud.app.test_client()
+        for i in range(cloud.MAX_ACCOUNT_ATTEMPTS):   # jede Adresse bleibt unter der Sperre pro IP
+            client.post('/login', data={'username': 'dora', 'password': 'falsch'}, environ_base={'REMOTE_ADDR': f'10.0.0.{i}'})
+            client.post('/login', data={'username': 'niemand', 'password': 'falsch'}, environ_base={'REMOTE_ADDR': f'10.0.1.{i}'})
+        r = client.post('/login', data={'username': 'dora', 'password': 'doras-passwort-123'}, environ_base={'REMOTE_ADDR': '10.0.2.1'})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('Zu viele'.encode(), r.data)
+        r = client.post('/login', data={'username': 'niemand', 'password': 'falsch'}, environ_base={'REMOTE_ADDR': '10.0.2.2'})
+        self.assertIn('Zu viele'.encode(), r.data)   # unbekannte Namen verhalten sich gleich
+        r = login_client().get('/')                   # andere Konten sind nicht betroffen
+        self.assertEqual(r.status_code, 200)
+
+    def test_old_database_gets_username_column(self):
+        old = os.path.join(TMP, 'alt-login.db')
+        conn = sqlite3.connect(old)
+        conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT, password_hash TEXT)")
+        conn.execute("CREATE TABLE login_attempts (id INTEGER PRIMARY KEY, ip_address TEXT NOT NULL, attempt_time TEXT NOT NULL)")
+        manage._migrate(conn)
+        self.assertIn('username', [r[1] for r in conn.execute("PRAGMA table_info(login_attempts)")])
+        conn.close()
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -64,7 +64,8 @@ CREATE INDEX IF NOT EXISTS idx_files_user_folder ON files(user_id, folder_id);
 CREATE TABLE IF NOT EXISTS login_attempts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ip_address TEXT NOT NULL,
-    attempt_time TEXT NOT NULL
+    attempt_time TEXT NOT NULL,
+    username TEXT                          -- eingegebener Name, fuer die Sperre pro Konto
 );
 CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address, attempt_time);
 
@@ -88,6 +89,11 @@ def _migrate(conn):
     columns = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
     if "session_version" not in columns:
         conn.execute("ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1")
+    columns = [r[1] for r in conn.execute("PRAGMA table_info(login_attempts)").fetchall()]
+    if columns and "username" not in columns:
+        conn.execute("ALTER TABLE login_attempts ADD COLUMN username TEXT")
+    if columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts(username, attempt_time)")
 
 
 def init_db():

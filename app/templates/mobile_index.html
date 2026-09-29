@@ -56,7 +56,10 @@ color: var(--text-muted);
 margin-top: 2px;
 }
 .logout-link {
+font: inherit;
 font-size: 0.85em;
+background: none;
+cursor: pointer;
 color: var(--text-muted);
 text-decoration: none;
 padding: 8px 10px;
@@ -320,7 +323,7 @@ overflow-y: auto;
 {% if disk %}{{ disk.used_gb }} / {{ disk.total_gb }} GB belegt{% endif %}
 </div>
 </div>
-<a href="/logout" class="logout-link">Abmelden</a>
+<form method="post" action="/logout" style="margin:0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="logout-link">Abmelden</button></form>
 </div>
 
 <div class="breadcrumb">

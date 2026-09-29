@@ -9,7 +9,7 @@
 # ob die ENTSTANDENE Kopie selbst eine gueltige Datenbank ist (PRAGMA integrity_check).
 #
 # Hinweis: Gesichert wird nur die Datenbank. Die hochgeladenen Dateien spiegelt bei Ausbau 2
-# ein eigener woechentlicher Cronjob (/etc/cron.d/himbeerepi-mirror) auf die Backup-Festplatte.
+# scripts/mirror_files.sh woechentlich auf die Backup-Festplatte (/etc/cron.d/himbeerepi-mirror).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/notify_ntfy.sh"
@@ -63,7 +63,7 @@ if [ "$BACKUP_OK" = true ]; then
     echo "$(date): Backup erfolgreich abgeschlossen, Integritaet geprueft.${SECONDARY_NOTE}" >> "$LOG_FILE"
     notify_backup "HimbeerePi: Datenbank-Backup OK" \
         "Tägliches DB-Backup erfolgreich, Integrität geprüft.${SECONDARY_NOTE}" \
-        "default" "white_check_mark"
+        "default" "white_check_mark" || true   # fehlende Push-Meldung macht das Backup nicht ungueltig
 else
     echo "$(date): FEHLGESCHLAGEN - $FAILURE_REASON" >> "$LOG_FILE"
     notify_backup "HimbeerePi: Datenbank-Backup FEHLGESCHLAGEN" \
@@ -75,3 +75,4 @@ else
     fi
     exit 1
 fi
+exit 0

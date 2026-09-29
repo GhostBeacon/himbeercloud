@@ -77,6 +77,12 @@ if [ "$DATA_DIR" != "/srv/himbeerepi" ]; then
     sed -i "s#/srv/himbeerepi#$DATA_DIR#g" /etc/systemd/system/himbeerepi.service
 fi
 install -m 644 "$INSTALL_DIR/deploy/himbeerepi.cron" /etc/cron.d/himbeerepi
+# Aeltere Spiegelung (rsync direkt im Cronjob, ohne Pruefung der Speicher-Platte) auf das Skript umstellen
+if [ -f /etc/cron.d/himbeerepi-mirror ] && ! grep -q "mirror_files.sh" /etc/cron.d/himbeerepi-mirror; then
+    printf '# HimbeerePi: woechentliche Spiegelung aller Dateien (angelegt vom Einrichtungsassistenten)\n0 2 * * 0 root %s/scripts/mirror_files.sh >> /var/log/himbeerepi-mirror.log 2>&1\n' \
+        "$INSTALL_DIR" > /etc/cron.d/himbeerepi-mirror
+    echo "    Spiegelung auf scripts/mirror_files.sh umgestellt"
+fi
 systemctl daemon-reload
 systemctl enable himbeerepi >/dev/null 2>&1
 systemctl restart himbeerepi

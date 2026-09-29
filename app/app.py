@@ -11,7 +11,8 @@ import io
 import re
 import json
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, send_from_directory, send_file, redirect, url_for, flash, session, jsonify
+from urllib.parse import urlsplit
+from flask import Flask, abort, render_template, request, send_from_directory, send_file, redirect, url_for, flash, session, jsonify
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import generate_csrf
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -131,8 +132,12 @@ os.makedirs(THUMBNAIL_FOLDER, exist_ok=True)
 # Unterstuetzte Formate fuer Vorschaubilder
 IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'cr3', 'cr2', 'heic', 'heif', 'pdf'}
 
+# Beim Entpacken von ZIPs mindestens so viel Platz frei lassen (Datenbank, Vorschaubilder, System)
+ZIP_FREE_SPACE_RESERVE = 512 * 1024 * 1024
+
 # Brute-Force-Schutz fuer den Login
-MAX_LOGIN_ATTEMPTS = 5
+MAX_LOGIN_ATTEMPTS = 5            # pro IP-Adresse
+MAX_ACCOUNT_ATTEMPTS = 20         # pro Benutzername, egal von wie vielen Adressen (verteilte Angriffe)
 LOCKOUT_WINDOW_MINUTES = 15
 LOCKOUT_DURATION_MINUTES = 15
 # Bei unbekanntem Benutzernamen wird trotzdem ein Hash geprueft - sonst verraet die kuerzere
@@ -328,24 +333,29 @@ def get_disk_info(conn):
         return disk_data
 
 
-def ensure_session_version_column():
-    """Spalte session_version nachruesten (Datenbanken aus aelteren Versionen). Mehrere
+def ensure_db_columns():
+    """Spalten nachruesten, die Datenbanken aus aelteren Versionen noch nicht haben. Mehrere
     Gunicorn-Worker laufen hier gleichzeitig durch - eine schon angelegte Spalte ist kein Fehler."""
     conn = get_db_connection()
     try:
-        columns = [r[1] for r in conn.execute('PRAGMA table_info(users)').fetchall()]
-        if columns and 'session_version' not in columns:
-            try:
-                conn.execute('ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 1')
-                conn.commit()
-            except sqlite3.OperationalError as e:
-                if 'duplicate column name' not in str(e):
-                    raise
+        for table, column, definition in (('users', 'session_version', 'INTEGER NOT NULL DEFAULT 1'),
+                                          ('login_attempts', 'username', 'TEXT')):
+            columns = [r[1] for r in conn.execute(f'PRAGMA table_info({table})').fetchall()]
+            if columns and column not in columns:
+                try:
+                    conn.execute(f'ALTER TABLE {table} ADD COLUMN {column} {definition}')
+                    conn.commit()
+                except sqlite3.OperationalError as e:
+                    if 'duplicate column name' not in str(e):
+                        raise
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'login_attempts'").fetchone():
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts(username, attempt_time)')
+            conn.commit()
     finally:
         conn.close()
 
 
-ensure_session_version_column()
+ensure_db_columns()
 
 
 def start_session(user):
@@ -494,6 +504,22 @@ def build_folder_tree(all_folders):
     return result
 
 
+def own_folder_id(conn, raw_id, user_id):
+    """Zielordner aus einem Formular: None fuer das Hauptverzeichnis, sonst die Nummer eines
+    eigenen, nicht geloeschten Ordners. Fremde oder unbekannte Nummern ergeben 404 - so laesst
+    sich nichts in Ordner anderer Benutzer legen, und es wird nicht verraten, ob es sie gibt."""
+    if raw_id in (None, '', 'root'):
+        return None
+    try:
+        folder_id = int(raw_id)
+    except (TypeError, ValueError):
+        abort(404)
+    if not conn.execute('SELECT 1 FROM folders WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+                        (folder_id, user_id)).fetchone():
+        abort(404)
+    return folder_id
+
+
 def get_or_create_subfolder(conn, name, parent_id, user_id):
     """Sucht einen Unterordner mit gegebenem Namen unter parent_id, legt ihn bei Bedarf neu an.
     Der Name kommt aus Ordner- und ZIP-Uploads und wird deshalb bereinigt."""
@@ -550,16 +576,18 @@ def import_zip_with_structure(conn, zip_path, base_folder_id, user_id, upload_fo
             if not original_name:
                 continue
 
-            data = zf.read(info)
             unique_filename = f"{uuid.uuid4().hex}_{original_name}"
             out_path = os.path.join(upload_folder, unique_filename)
             try:
-                with open(out_path, 'wb') as out_f:
-                    out_f.write(data)
-            except OSError as e:
+                # In Bloecken kopieren statt die ganze Datei in den Arbeitsspeicher zu laden
+                with zf.open(info) as src, open(out_path, 'wb') as out_f:
+                    shutil.copyfileobj(src, out_f, 1024 * 1024)
+                size_mb = round(os.path.getsize(out_path) / (1024 * 1024), 2)
+            except (OSError, zipfile.BadZipFile) as e:
                 print(f"Fehler beim Schreiben von {original_name} aus ZIP: {e}")
+                if os.path.exists(out_path):
+                    os.remove(out_path)
                 continue
-            size_mb = round(len(data) / (1024 * 1024), 2)
 
             ext = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
             if ext in image_extensions:
@@ -736,15 +764,38 @@ def count_recent_failed_attempts(conn, ip_address):
     return row['cnt']
 
 
-def record_failed_attempt(conn, ip_address):
-    conn.execute('INSERT INTO login_attempts (ip_address, attempt_time) VALUES (?, ?)',
-                 (ip_address, datetime.now().isoformat()))
+def account_locked(conn, username):
+    """Sperre pro Konto: greift auch, wenn ein Angreifer viele IP-Adressen nutzt. Gezaehlt wird der
+    eingegebene Name - unbekannte Namen werden genauso gesperrt, das verraet also nichts."""
+    cutoff = (datetime.now() - timedelta(minutes=LOCKOUT_WINDOW_MINUTES)).isoformat()
+    row = conn.execute(
+        'SELECT COUNT(*) as cnt FROM login_attempts WHERE username = ? AND attempt_time > ?',
+        (username, cutoff)).fetchone()
+    return row['cnt'] >= MAX_ACCOUNT_ATTEMPTS
+
+
+def record_failed_attempt(conn, ip_address, username):
+    conn.execute('INSERT INTO login_attempts (ip_address, attempt_time, username) VALUES (?, ?, ?)',
+                 (ip_address, datetime.now().isoformat(), username))
     conn.commit()
 
 
-def clear_failed_attempts(conn, ip_address):
-    conn.execute('DELETE FROM login_attempts WHERE ip_address = ?', (ip_address,))
+def clear_failed_attempts(conn, ip_address, username):
+    conn.execute('DELETE FROM login_attempts WHERE ip_address = ? OR username = ?', (ip_address, username))
     conn.commit()
+
+
+def safe_redirect_target(target):
+    """Nur Ziele innerhalb der Cloud ("/folder/3?page=2") - keine fremden Seiten, auch nicht
+    ueber Tricks wie "//boese.example" oder "/\\boese.example"."""
+    if not target or not target.startswith('/') or target.startswith('//'):
+        return None
+    if '\\' in target or any(ord(c) < 32 for c in target):
+        return None
+    parts = urlsplit(target)
+    if parts.scheme or parts.netloc:
+        return None
+    return target
 
 
 # --- ROUTEN ---
@@ -807,14 +858,13 @@ def login():
 
     if request.method == 'POST':
         failed_count = count_recent_failed_attempts(conn, ip_address)
+        username = request.form['username']
+        password = request.form['password']
 
-        if failed_count >= MAX_LOGIN_ATTEMPTS:
+        if failed_count >= MAX_LOGIN_ATTEMPTS or account_locked(conn, username):
             flash(f'Zu viele fehlgeschlagene Anmeldeversuche. Bitte warte {LOCKOUT_DURATION_MINUTES} Minuten und versuche es erneut.')
             conn.close()
             return render_template('login.html')
-
-        username = request.form['username']
-        password = request.form['password']
 
         user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
 
@@ -829,12 +879,12 @@ def login():
                 session['pending_2fa_user_id'] = user['id']
                 return redirect(url_for('verify_2fa'))
 
-            clear_failed_attempts(conn, ip_address)
+            clear_failed_attempts(conn, ip_address, username)
             conn.close()
             start_session(user)
             return redirect(url_for('index'))
         else:
-            record_failed_attempt(conn, ip_address)
+            record_failed_attempt(conn, ip_address, username)
             remaining = MAX_LOGIN_ATTEMPTS - (failed_count + 1)
             if remaining > 0:
                 flash(f'Ungültiger Benutzername oder Passwort! Noch {remaining} Versuch(e) übrig.')
@@ -860,25 +910,26 @@ def verify_2fa():
         conn = get_db_connection()
         # Falsche Codes zaehlen wie falsche Passwoerter - ohne Sperre liessen sich die
         # 6-stelligen Codes mit bekanntem Passwort einfach durchprobieren.
-        if count_recent_failed_attempts(conn, ip_address) >= MAX_LOGIN_ATTEMPTS:
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (pending_user_id,)).fetchone()
+        username = user['username'] if user else None
+        if count_recent_failed_attempts(conn, ip_address) >= MAX_LOGIN_ATTEMPTS or account_locked(conn, username):
             conn.close()
             session.pop('pending_2fa_user_id', None)
             flash(f'Zu viele fehlgeschlagene Anmeldeversuche. Bitte warte {LOCKOUT_DURATION_MINUTES} Minuten und versuche es erneut.')
             return redirect(url_for('login'))
-        user = conn.execute('SELECT * FROM users WHERE id = ?', (pending_user_id,)).fetchone()
 
         if user and user['totp_secret']:
             totp = pyotp.TOTP(user['totp_secret'])
             # valid_window=1 erlaubt eine kleine Zeitabweichung zwischen Handy-Uhr und
             # Server-Uhr (plus/minus 30 Sekunden), ohne die Sicherheit nennenswert zu schwaechen.
             if totp.verify(code, valid_window=1):
-                clear_failed_attempts(conn, ip_address)
+                clear_failed_attempts(conn, ip_address, username)
                 conn.close()
                 session.pop('pending_2fa_user_id', None)
                 start_session(user)
                 return redirect(url_for('index'))
 
-        record_failed_attempt(conn, ip_address)
+        record_failed_attempt(conn, ip_address, username)
         conn.close()
         flash('Ungültiger Code. Bitte erneut versuchen.')
 
@@ -958,7 +1009,7 @@ def disable_2fa():
     return redirect(url_for('index'))
 
 
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
@@ -987,6 +1038,9 @@ def index(folder_id=None):
     if folder_id:
         current_folder = conn.execute('SELECT * FROM folders WHERE id = ? AND user_id = ?',
                                        (folder_id, current_user.id)).fetchone()
+        if not current_folder:
+            conn.close()
+            abort(404)
 
     if folder_id:
         folders = conn.execute('SELECT * FROM folders WHERE parent_id = ? AND user_id = ? AND deleted_at IS NULL',
@@ -1229,13 +1283,14 @@ def system_stats():
 @login_required
 def create_folder():
     folder_name = sanitize_display_name(request.form.get('folder_name'))
-    parent_id = request.form.get('parent_id') or None
-
-    if folder_name:
-        conn = get_db_connection()
-        conn.execute('INSERT INTO folders (name, parent_id, user_id) VALUES (?, ?, ?)',
-                     (folder_name, parent_id, current_user.id))
-        conn.commit()
+    conn = get_db_connection()
+    try:
+        parent_id = own_folder_id(conn, request.form.get('parent_id'), current_user.id)
+        if folder_name:
+            conn.execute('INSERT INTO folders (name, parent_id, user_id) VALUES (?, ?, ?)',
+                         (folder_name, parent_id, current_user.id))
+            conn.commit()
+    finally:
         conn.close()
 
     if parent_id:
@@ -1246,9 +1301,6 @@ def create_folder():
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload_file():
-    folder_id = request.form.get('folder_id') or None
-    folder_id = int(folder_id) if folder_id else None
-
     files = request.files.getlist('file')
     relative_paths = request.form.getlist('relative_path')
     extract_zip = request.form.get('extract_zip') == '1'
@@ -1261,6 +1313,7 @@ def upload_file():
     folder_cache = {}
 
     try:
+        folder_id = own_folder_id(conn, request.form.get('folder_id'), current_user.id)
         for i, file in enumerate(files):
             if file.filename == '':
                 continue
@@ -1293,9 +1346,16 @@ def upload_file():
                     print(f"Fehler beim Speichern von ZIP {original_name}: {e}")
                     continue
                 try:
+                    # Entpackte Groesse laut ZIP-Verzeichnis (beim Entpacken wird nie mehr geschrieben)
+                    with zipfile.ZipFile(temp_zip_path, 'r') as zf_check:
+                        total_uncompressed = sum(i.file_size for i in zf_check.infolist() if not i.is_dir())
+                    free = shutil.disk_usage(app.config['UPLOAD_FOLDER']).free
+                    if total_uncompressed + ZIP_FREE_SPACE_RESERVE > free:
+                        os.remove(temp_zip_path)
+                        return (f"Nicht genug freier Speicher: Das ZIP wäre entpackt "
+                                f"{total_uncompressed / 1024 ** 3:.1f} GB groß.", 507)
+                    total_uncompressed_mb = total_uncompressed / (1024 * 1024)
                     if current_user.storage_quota_mb:
-                        with zipfile.ZipFile(temp_zip_path, 'r') as zf_check:
-                            total_uncompressed_mb = sum(i.file_size for i in zf_check.infolist() if not i.is_dir()) / (1024 * 1024)
                         used_mb = get_user_total_usage_mb(conn, current_user.id)
                         if used_mb + total_uncompressed_mb > current_user.storage_quota_mb:
                             os.remove(temp_zip_path)
@@ -1746,7 +1806,7 @@ def bulk_move():
 
     conn.commit()
     conn.close()
-    redirect_to = request.form.get('redirect_to')
+    redirect_to = safe_redirect_target(request.form.get('redirect_to'))
     if redirect_to:
         return redirect(redirect_to)
     return ('', 204)
@@ -1769,7 +1829,7 @@ def bulk_delete():
 
     conn.commit()
     conn.close()
-    redirect_to = request.form.get('redirect_to')
+    redirect_to = safe_redirect_target(request.form.get('redirect_to'))
     if redirect_to:
         return redirect(redirect_to)
     return ('', 204)
@@ -1918,7 +1978,8 @@ def delete_permanently_folder(folder_id):
     conn = get_db_connection()
 
     def purge_recursive(fid):
-        files = conn.execute('SELECT * FROM files WHERE folder_id = ?', (fid,)).fetchall()
+        files = conn.execute('SELECT * FROM files WHERE folder_id = ? AND user_id = ?',
+                             (fid, current_user.id)).fetchall()
         for f in files:
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], f['filename'])
             if os.path.exists(filepath):
@@ -1929,13 +1990,14 @@ def delete_permanently_folder(folder_id):
             previewpath = os.path.join(app.config['THUMBNAIL_FOLDER'], f['filename'] + '_preview.jpg')
             if os.path.exists(previewpath):
                 os.remove(previewpath)
-        conn.execute('DELETE FROM files WHERE folder_id = ?', (fid,))
+        conn.execute('DELETE FROM files WHERE folder_id = ? AND user_id = ?', (fid, current_user.id))
 
-        subfolders = conn.execute('SELECT id FROM folders WHERE parent_id = ?', (fid,)).fetchall()
+        subfolders = conn.execute('SELECT id FROM folders WHERE parent_id = ? AND user_id = ?',
+                                  (fid, current_user.id)).fetchall()
         for sub in subfolders:
             purge_recursive(sub['id'])
 
-        conn.execute('DELETE FROM folders WHERE id = ?', (fid,))
+        conn.execute('DELETE FROM folders WHERE id = ? AND user_id = ?', (fid, current_user.id))
 
     folder = conn.execute('SELECT * FROM folders WHERE id = ? AND user_id = ?',
                            (folder_id, current_user.id)).fetchone()

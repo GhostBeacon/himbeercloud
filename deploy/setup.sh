@@ -639,11 +639,11 @@ step_backup() {
     update_hdd_watts
     restart_app
     apt_install rsync
-    printf '# HimbeerePi: woechentliche Spiegelung aller Dateien (angelegt vom Einrichtungsassistenten)\n0 2 * * 0 root mountpoint -q %s && rsync -a --delete --exclude=/lost+found --exclude=/tmp_uploads %s/ %s/dateien/ >> /var/log/himbeerepi-mirror.log 2>&1\n' \
-        "$BACKUP_MOUNT" "$dir" "$BACKUP_MOUNT" > "$MIRROR_CRON"
+    printf '# HimbeerePi: woechentliche Spiegelung aller Dateien (angelegt vom Einrichtungsassistenten)\n0 2 * * 0 root %s/scripts/mirror_files.sh >> /var/log/himbeerepi-mirror.log 2>&1\n' \
+        "$INSTALL_DIR" > "$MIRROR_CRON"
     log "Backup-Platte $PART, Spiegelung eingerichtet"
     if ask "Backup-Platte ist eingerichtet ($PART unter $BACKUP_MOUNT).\n\n  - Datenbank: jede Nacht um 3:10 Uhr\n  - alle Dateien: jeden Sonntag um 2 Uhr gespiegelt\n\nErste Spiegelung jetzt im Hintergrund starten?" 16; then
-        nohup bash -c "rsync -a --delete --exclude=/lost+found --exclude=/tmp_uploads '$dir/' '$BACKUP_MOUNT/dateien/' >> /var/log/himbeerepi-mirror.log 2>&1" >/dev/null 2>&1 &
+        nohup "$INSTALL_DIR/scripts/mirror_files.sh" >> /var/log/himbeerepi-mirror.log 2>&1 &
         msg "Die erste Spiegelung läuft im Hintergrund. Fortschritt/Fehler: /var/log/himbeerepi-mirror.log"
     fi
 }
