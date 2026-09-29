@@ -40,4 +40,8 @@ HIMBEEREPI_INSECURE_COOKIE=1 venv/bin/python -m unittest discover -s tests
 - Keine persönlichen Daten, Domains, Zugangsdaten oder Datenbanken committen.
 - Grafiken werden mit `tools/make_icons.py` erzeugt, nicht von Hand bearbeitet.
 
+## Neue Version veröffentlichen (Maintainer)
+
+Die Nummer in der Datei `VERSION` erhöhen und auf `main` pushen: `1.1.1` für Fehlerkorrekturen, `1.2.0` für neue Funktionen, `2.0.0` für große Umstellungen, mit Zusatz wie `1.2.0-beta.1` für eine Vorabversion. Der Workflow `.github/workflows/release.yml` lässt dann die Tests laufen und legt bei Erfolg Tag und Release mit den Änderungen seit der letzten Version an. Die Release-Beschreibung lässt sich danach auf GitHub noch ergänzen.
+
 Mit einem Pull Request stimmst du zu, dass dein Beitrag unter der [MIT-Lizenz](LICENSE) des Projekts veröffentlicht wird.

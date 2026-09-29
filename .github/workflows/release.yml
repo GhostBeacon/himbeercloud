@@ -1,0 +1,87 @@
+name: Release
+
+# Neue Version veroeffentlichen: Nummer in der Datei VERSION erhoehen und auf main pushen.
+# Dann laufen die Tests, und bei Erfolg entstehen Tag (v1.2.0) und GitHub-Release mit den
+# Aenderungen seit der letzten Version. Andere Pushes (Doku, Tippfehler) erzeugen kein Release,
+# damit Beobachter des Repos nur bei echten neuen Versionen benachrichtigt werden.
+# Versionsschema: 1.1.1 = Fehlerkorrektur, 1.2.0 = neue Funktionen, 2.0.0 = grosse Umstellung;
+# mit Zusatz (1.2.0-beta.1) wird es eine Vorabversion.
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/server.yml
+
+  release:
+    name: Release anlegen
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # ganzer Verlauf und alle Tags fuer die Aenderungsliste
+
+      - name: Version pruefen
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::VERSION enthaelt '$VERSION' - erwartet wird z.B. 1.2.0"
+            exit 1
+          fi
+          TAG="v$VERSION"
+          # Letzte fertige Version (ohne Vorabversionen): Vergleich und Aenderungsliste beziehen sich darauf
+          PREV="$(git tag --list 'v*' --sort=-v:refname | grep -v -- '-' | grep -vx "$TAG" | head -n 1 || true)"
+          if [ -n "$PREV" ] && [ "$(printf '%s\n%s\n' "${PREV#v}" "$VERSION" | sort -V | tail -n 1)" != "$VERSION" ]; then
+            echo "::error::$TAG ist nicht neuer als $PREV"
+            exit 1
+          fi
+          {
+            echo "VERSION=$VERSION"
+            echo "TAG=$TAG"
+            echo "PREV=$PREV"
+          } >> "$GITHUB_ENV"
+
+      - name: Aenderungen zusammenstellen
+        run: |
+          {
+            if [ -n "$PREV" ]; then
+              echo "## Änderungen seit ${PREV#v}"
+              echo
+              git log --no-merges --format='- %s (%h)' "$PREV..HEAD" -- . ':(exclude)VERSION'
+            else
+              echo "## Änderungen"
+              echo
+              git log --no-merges --format='- %s (%h)' -20 -- . ':(exclude)VERSION'
+            fi
+            echo
+            echo "## Aktualisieren"
+            echo
+            echo '```bash'
+            echo 'cd /opt/himbeerepi && sudo git pull'
+            echo 'sudo /opt/himbeerepi/deploy/install.sh'
+            echo '```'
+          } > notes.md
+          cat notes.md
+
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG gibt es schon - nichts zu tun."
+            exit 0
+          fi
+          FLAGS=(--latest)
+          [[ "$VERSION" == *-* ]] && FLAGS=(--prerelease)
+          gh release create "$TAG" --title "HimbeerePi $VERSION" --notes-file notes.md \
+            --target "$GITHUB_SHA" "${FLAGS[@]}"
