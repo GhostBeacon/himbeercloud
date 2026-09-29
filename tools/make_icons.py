@@ -38,7 +38,7 @@ def svg():
     tx, ty, s = CLOUD_TRANSFORM
     sx, sy, sa, ss = SPRIG
     x, y, w, h, r = CLOUD_BASE
-    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">',
+    parts = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">',
              f'<rect width="64" height="64" rx="{CORNER_RADIUS}" fill="{RASPBERRY}"/>',
              f'<g transform="translate({tx},{ty}) scale({s})" fill="{CLOUD}">']
     parts += [f'<circle cx="{cx}" cy="{cy}" r="{cr}"/>' for cx, cy, cr in CLOUD_CIRCLES]

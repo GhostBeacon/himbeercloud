@@ -122,7 +122,7 @@ app/              Flask-Anwendung (Weboberfläche) und Verwaltungsskripte
   manage.py       Datenbank anlegen, Benutzer verwalten
   templates/      Seiten (Desktop, Mobil, Anmeldung, 2FA)
   static/icons/   Symbole (Favicon, Startbildschirm)
-scripts/          Backup, Gesundheitsprüfung, ntfy-Meldung
+scripts/          Datenbank-Backup, Spiegelung, Gesundheitsprüfung, ntfy-Meldung
 deploy/           setup.sh (Einrichtungsassistent), install.sh, systemd-Dienst, Cronjobs, Einstellungsvorlage, Caddy-Beispiel
 tools/            make_icons.py erzeugt die Browser-Symbole
 tests/            Rauchtest (python -m unittest discover -s tests)

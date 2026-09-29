@@ -21,7 +21,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import secrets
 import pyotp
 import qrcode
-import io
 import base64
 from werkzeug.utils import secure_filename
 from PIL import Image

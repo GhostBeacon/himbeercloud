@@ -17,7 +17,7 @@ Bitte Sicherheitslücken **nicht** als öffentliches Issue melden, sondern über
 - 2FA für alle Benutzer einrichten
 - Nur Caddy (Port 80/443) nach außen freigeben, SSH nur im Heimnetz oder über ein VPN; zum Beispiel mit `ufw`
 - System aktuell halten: `sudo apt update && sudo apt full-upgrade`
-- Die hochgeladenen Dateien zusätzlich auf einer zweiten Platte sichern (siehe README)
+- Die hochgeladenen Dateien zusätzlich auf einer zweiten Platte sichern ([INSTALL.md, Abschnitt 13](INSTALL.md#13-ausbau-2-backup-festplatte))
 - Nach Verdacht auf fremden Zugriff: Passwort neu setzen (`reset_password.py`) – das meldet alle Geräte ab. Ohne neues Passwort geht das auch in der Weboberfläche unter *2FA → Alle anderen Geräte abmelden*
 
 ## Bekannte Restrisiken

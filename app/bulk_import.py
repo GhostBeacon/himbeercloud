@@ -140,9 +140,16 @@ if __name__ == '__main__':
 
     conn = cloud_app.get_db_connection()
     user_row = conn.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
+    # Zielordner muss dem Benutzer gehoeren - sonst landen die Dateien unsichtbar in einem fremden Ordner
+    folder_ok = target_folder_id is None or conn.execute(
+        'SELECT 1 FROM folders WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+        (target_folder_id, user_row['id'] if user_row else None)).fetchone()
     conn.close()
     if not user_row:
         print(f"FEHLER: Benutzer '{username}' nicht gefunden.")
+        sys.exit(1)
+    if not folder_ok:
+        print(f"FEHLER: Ordner {target_folder_id} gehoert nicht '{username}' oder liegt im Papierkorb.")
         sys.exit(1)
     user_id = user_row['id']
 
